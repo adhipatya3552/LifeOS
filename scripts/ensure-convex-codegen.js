@@ -21,6 +21,13 @@ if (!hasRealConvexConfig) {
   process.exit(0);
 }
 
+// In CI environments without a deploy key, fall back to checked-in generated bindings.
+const hasDeployKey = Boolean(process.env.CONVEX_DEPLOY_KEY);
+if (!hasDeployKey && existsSync(generatedApiPath)) {
+  console.log("Skipping Convex codegen: no CONVEX_DEPLOY_KEY found, using checked-in generated bindings.");
+  process.exit(0);
+}
+
 const isWindows = process.platform === "win32";
 const command = isWindows ? "npx.cmd" : "npx";
 const result = spawnSync(command, ["convex", "codegen"], {
