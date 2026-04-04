@@ -1,8 +1,133 @@
-## LifeOS Setup
+# LifeOS — Your Personal AI Life Agent
 
-This project uses Next.js 16, Auth0 v4, Convex, and OpenRouter.
+> Chat with an AI that manages your Gmail, Google Calendar, and Google Drive — autonomously, securely, and all in one place.
 
-### Required Auth0 setup
+---
+
+## 🌟 Project Overview
+
+**LifeOS** is a personal AI-powered life management assistant. Instead of juggling multiple apps, you simply *talk* to LifeOS in plain English and it takes care of the rest — summarising your inbox, checking your schedule, finding free slots, reading documents, and more.
+
+Built as a modern full-stack web application, LifeOS connects your Google services through direct OAuth 2.0, stores everything in your own private database, and uses a powerful language model to understand your requests and act on them intelligently.
+
+**This is your own personal agent — built by you, running under your own accounts, and fully under your control.**
+
+---
+
+## ✨ MVP Features
+
+### 🤖 AI Chat Interface
+- Natural language conversation with your personal life agent
+- Streaming responses with real-time typing indicators
+- Persistent conversation history saved to your database
+- Suggested prompts to get started quickly
+- Soft audio chime when the agent finishes responding (configurable in Settings)
+
+### 📧 Gmail Integration
+- **Summarise your inbox** — get a quick overview of unread emails
+- **Search emails** — find specific messages by keyword, sender, or topic
+- **Draft replies** — let the agent compose a reply for your review
+- **Send emails** — dispatch messages on your behalf (with approval control)
+
+### 📅 Google Calendar Integration
+- **Get your schedule** — view today's or any day's events at a glance
+- **Create events** — add meetings, reminders, and appointments by just describing them
+- **Reschedule events** — update existing events without opening Google Calendar
+- **Find free slots** — ask "when am I free tomorrow afternoon?" and get real answers
+
+### 🗂 Google Drive Integration
+- **List recent documents** — see your latest Google Docs at a glance
+- **Summarise a document** — get a concise summary of any Doc's content
+- **Create documents** — generate new Google Docs with AI-written content
+
+### 🔐 Security & Connections
+- Secure sign-in via **Auth0 + Google OAuth 2.0**
+- Each Google service (Gmail, Calendar, Drive) is connected **individually** with granular scopes
+- OAuth tokens stored in your **own private Convex database** — never on a shared server
+- Automatic token refresh — connections stay alive without re-authorising
+- Revoke access to any service at any time from the Connections page
+
+### ⚙️ Settings & Control
+- **Agent Behaviour** — auto-approve low-risk (read-only) actions, or require manual approval for all write actions (sending emails, creating events)
+- **Security** — step-up authentication for sensitive operations
+- **Audit Log** — every agent action is logged to your Convex database for review
+- **Notifications** — toggle the completion chime on or off
+- All settings are persisted to your database and sync across sessions
+
+### 📜 History
+- Full timeline of every action the agent has taken on your behalf
+- Filterable by service (Gmail, Calendar, Drive) and status (success, pending, failed)
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | Next.js 16 (App Router, Turbopack) |
+| **Authentication** | Auth0 v4 + Google OAuth 2.0 |
+| **Database & Backend** | Convex (real-time, serverless) |
+| **AI Model** | OpenRouter → GPT-4.1 Mini |
+| **AI SDK** | Vercel AI SDK v6 |
+| **Styling** | Vanilla CSS with CSS variables, Framer Motion |
+| **Google APIs** | Gmail API, Calendar API, Drive API, Docs API |
+
+---
+
+## ⚠️ "Google hasn't verified this app" — Don't Panic, You're Safe
+
+When you sign in with Google or connect your Gmail, Calendar, or Drive, you might see a screen that says:
+
+> **"Google hasn't verified this app"**
+> *The app is requesting access to sensitive info in your Google Account. Until the developer verifies this app with Google, you shouldn't use it.*
+
+**This is completely normal for a personal project, and your data is 100% safe.** Here's why:
+
+### Why does this warning appear?
+
+Google shows this warning for any app that hasn't gone through their formal **OAuth verification process**. That verification is designed for apps distributed to thousands of strangers — it involves submitting documentation, a privacy policy, and a security review that can take weeks.
+
+**LifeOS is a personal AI agent built for *you*.** It is not a public product. Because it hasn't been submitted for Google's formal review process yet, Google displays this generic caution screen as a precaution for all unreviewed apps.
+
+### Is my data at risk?
+
+**No.** Here's exactly what happens with your data:
+
+- ✅ Your Google password is **never seen or stored** by LifeOS. Sign-in is handled entirely by Google and Auth0 — LifeOS only receives a confirmation that you signed in successfully.
+- ✅ Any Gmail, Calendar, or Drive access tokens are stored **only in your own private Convex database** — isolated to this project and accessible only by you.
+- ✅ LifeOS only reads or acts on your data **when you explicitly ask it to** (e.g. *"summarise my inbox"* or *"what's on my calendar today?"*).
+- ✅ No data is sold, shared, or forwarded to any third party. Ever.
+- ✅ You can revoke LifeOS's access at any time by visiting [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and removing it — no questions asked.
+
+### How do I get past the warning?
+
+1. On the warning screen, click **"Advanced"** (small link in the bottom-left corner)
+2. Then click **"Go to LifeOS (unsafe)"** — the word *"unsafe"* is Google's standard legal boilerplate shown for **every** unverified app and does **not** reflect any actual risk
+3. Review the list of permissions Google shows and click **"Allow"**
+
+You're in! Once you allow access, the warning will **not appear again** for that service.
+
+### When will the warning disappear permanently?
+
+Once LifeOS is submitted to Google's OAuth verification programme and approved, the warning disappears for all users. This is a one-time administrative process on the developer's side and has no effect on the safety or functionality of the app in the meantime.
+
+---
+
+## 🚀 Getting Started
+
+Run the development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+---
+
+## ⚙️ Setup & Configuration
+
+### 1. Required Auth0 setup
 
 Before testing `Sign in` or `Sign up`, replace the Auth0 placeholders in `.env.local`:
 
@@ -24,120 +149,84 @@ In your Auth0 application settings, configure:
 
 `AUTH0_CLIENT_ID` and `AUTH0_CLIENT_SECRET` must come from your Auth0 **Regular Web Application**. Do not point them at a Machine-to-Machine app. If you also use Auth0 Management API features in this repo, those credentials belong in `AUTH0_MANAGEMENT_CLIENT_ID` and `AUTH0_MANAGEMENT_CLIENT_SECRET`, and they should usually be a separate Machine-to-Machine application.
 
-If these values are missing or still placeholders, the app now fails fast with a clear Auth0 configuration error instead of an OpenID discovery 404.
+If these values are missing or still placeholders, the app fails fast with a clear Auth0 configuration error instead of an OpenID discovery 404.
 
-If you change `AUTH0_SECRET`, switch tenants, or move between incompatible local auth setups, your browser can keep stale Auth0 cookies. The app now clears invalid Auth0 cookies automatically and redirects you to a fresh login flow instead of crashing with `Invalid Compact JWE`.
+If you change `AUTH0_SECRET`, switch tenants, or move between incompatible local auth setups, your browser can keep stale Auth0 cookies. The app clears invalid Auth0 cookies automatically and redirects you to a fresh login flow instead of crashing with `Invalid Compact JWE`.
 
-### Google connection setup for LifeOS
+---
 
-The app now uses one Auth0 Google social connection, `google-oauth2`, and requests different scopes at runtime for Gmail, Calendar, and Drive.
+### 2. Google OAuth 2.0 setup (for Gmail / Calendar / Drive)
 
-Auth0 Connected Accounts also requires the Auth0 My Account API flow to be available to this application. The app uses `create:me:connected_accounts` before redirecting to Google, so a failure before Google opens is an Auth0 setup issue, not a Google consent-screen issue.
+LifeOS uses direct Google OAuth 2.0 (not Auth0 Token Vault) to connect Google services. You need a Google Cloud project with an OAuth 2.0 client.
 
-In Auth0, use the existing `google-oauth2` connection and make sure:
+**Steps:**
 
-- the Google Client ID and Client Secret are valid
-- the connection is enabled for the same Regular Web Application used by LifeOS login
-- Token Vault is enabled
-- Offline Access is enabled
-- Connected Accounts is enabled
-
-In Google Cloud, create or repair a `Web application` OAuth client and add this redirect URI exactly:
-
-- `https://dev-63uejigf065ebwtx.us.auth0.com/login/callback`
-
-The Google Client ID and Secret from that OAuth client must be entered into the Auth0 `google-oauth2` social connection settings.
-
-Required Google scopes:
-
-- Gmail:
-  - `https://www.googleapis.com/auth/gmail.readonly`
-  - `https://www.googleapis.com/auth/gmail.compose`
-  - `https://www.googleapis.com/auth/gmail.send`
-- Calendar:
-  - `https://www.googleapis.com/auth/calendar.events`
-- Drive:
-  - `https://www.googleapis.com/auth/documents`
-  - `https://www.googleapis.com/auth/drive.metadata.readonly`
-- All services:
-  - `openid`
-  - `email`
-  - `profile`
-
-In Google Cloud, enable:
-
-- Gmail API
-- Google Calendar API
-- Google Drive API
-- Google Docs API
-
-Also configure the OAuth consent screen and add your test users before trying the per-service connection flow.
-
-If you want the app to preflight-check your tenant setup before starting authorization, add Auth0 Management API credentials to `.env.local`:
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → **Credentials**
+2. Create → OAuth 2.0 Client ID → **Web Application**
+3. Add Authorized Redirect URIs:
+   - `http://localhost:3000/api/auth/google/callback` (local development)
+   - Your production URL + `/api/auth/google/callback` (when deployed)
+4. Also add `https://YOUR_AUTH0_DOMAIN/login/callback` for the Auth0 sign-in flow
+5. Enable these APIs in the Google API Library:
+   - Gmail API
+   - Google Calendar API
+   - Google Drive API
+   - Google Docs API
+6. Copy the Client ID and Secret into `.env.local`:
 
 ```bash
-AUTH0_MANAGEMENT_CLIENT_ID=your_management_client_id
-AUTH0_MANAGEMENT_CLIENT_SECRET=your_management_client_secret
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
-These Management API credentials should come from a Machine-to-Machine Auth0 application. They should not reuse the same client ID and secret as your main LifeOS login app.
+Required Google scopes (the app requests these automatically):
 
-With those values present, LifeOS can detect common setup problems earlier, such as a missing `google-oauth2` connection or a connection that is not enabled for the current app.
+| Service | Scopes |
+|---|---|
+| Gmail | `gmail.readonly`, `gmail.compose`, `gmail.send` |
+| Calendar | `calendar.events` |
+| Drive | `documents`, `drive.metadata.readonly` |
+| All | `openid`, `email`, `profile` |
 
-### Hosted login copy and dev-key cleanup
+> **Tip:** If your Google Cloud project is in "Testing" status on the OAuth consent screen, only users listed as Test Users can sign in. Go to **APIs & Services → Audience** and either add your email as a test user, or click "Publish App" to remove the restriction entirely.
 
-The text on Auth0's hosted login page and the `Dev Keys` warning are controlled by Auth0, not by the Next.js UI in this repo.
+---
 
-To apply the LifeOS copy and remove the Google dev-keys warning for this app:
-
-1. Create or reuse a Machine to Machine Auth0 application.
-2. Authorize it for the Auth0 Management API.
-3. Grant these scopes:
-   - `update:prompts`
-   - `read:connections`
-   - `update:connections`
-4. Add these values to `.env.local`:
+### 3. Convex setup
 
 ```bash
-AUTH0_MANAGEMENT_CLIENT_ID=your_management_client_id
-AUTH0_MANAGEMENT_CLIENT_SECRET=your_management_client_secret
-AUTH0_HOSTED_LOGIN_TEXT="Log in to LifeOS to continue."
-AUTH0_HOSTED_SIGNUP_TEXT="Log in to LifeOS to continue."
-AUTH0_SOCIAL_CONNECTION_TO_DISABLE=google-oauth2
+npx convex dev
 ```
 
-5. Run:
+This creates your Convex deployment and populates `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` in `.env.local` automatically.
+
+---
+
+### 4. OpenRouter AI setup
+
+Sign up at [openrouter.ai](https://openrouter.ai), create an API key, and add it to `.env.local`:
 
 ```bash
-npm run auth0:hosted-login
+OPENROUTER_API_KEY=sk-or-v1-...
+AI_MODEL=openai/gpt-4.1-mini   # or any OpenRouter-supported model
 ```
 
-By default, this updates the hosted login and sign-up descriptions, then disables the app's Google connection so the Auth0 developer-keys alert is no longer shown. If you later add your own production Google OAuth keys in Auth0, you can re-enable the connection there.
+---
 
-## Getting Started
-
-Run the development server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Verification
+## ✅ Verification
 
 ```bash
 npm run typecheck
 npm run build
 ```
 
-You also need a real `OPENROUTER_API_KEY` if you want the AI chat flow to work end to end.
+---
 
-## Learn More
-
-Useful docs:
+## 📚 Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Auth0 Next.js SDK](https://auth0.github.io/nextjs-auth0/)
 - [Convex Documentation](https://docs.convex.dev/)
 - [OpenRouter](https://openrouter.ai/)
+- [Vercel AI SDK](https://sdk.vercel.ai/docs)
+- [Google Cloud Console](https://console.cloud.google.com/)

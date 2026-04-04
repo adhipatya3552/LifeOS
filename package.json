@@ -1,37 +1,37 @@
 {
-    "name":  "personal-lifeos-agent",
-    "version":  "0.1.0",
-    "private":  true,
-    "scripts":  {
-                    "dev":  "next dev",
-                    "prebuild":  "node scripts/ensure-convex-codegen.js",
-                    "build":  "next build",
-                    "start":  "next start",
-                    "pretypecheck":  "node scripts/ensure-convex-codegen.js",
-                    "typecheck":  "tsc --noEmit",
-                    "convex:codegen":  "convex codegen",
-                    "auth0:hosted-login":  "node scripts/configure-auth0-hosted-login.mjs"
-                },
-    "dependencies":  {
-                         "@ai-sdk/openai":  "^3.0.41",
-                         "@ai-sdk/react":  "^3.0.118",
-                         "@auth0/nextjs-auth0":  "^4.16.0",
-                         "ai":  "^6.0.116",
-                         "convex":  "^1.34.0",
-                         "framer-motion":  "^12.38.0",
-                         "googleapis":  "^171.4.0",
-                         "lucide-react":  "^0.577.0",
-                         "next":  "16.2.0",
-                         "react":  "19.2.4",
-                         "react-dom":  "19.2.4",
-                         "zod":  "^4.3.6"
-                     },
-    "devDependencies":  {
-                            "@tailwindcss/postcss":  "^4",
-                            "@types/node":  "^20",
-                            "@types/react":  "^19",
-                            "@types/react-dom":  "^19",
-                            "tailwindcss":  "^4",
-                            "typescript":  "^5"
-                        }
+    "name": "personal-lifeos-agent",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "prebuild": "node scripts/ensure-convex-codegen.js",
+        "build": "next build",
+        "start": "next start",
+        "pretypecheck": "node scripts/ensure-convex-codegen.js",
+        "typecheck": "tsc --noEmit",
+        "convex:codegen": "convex codegen",
+        "auth0:hosted-login": "node scripts/configure-auth0-hosted-login.mjs"
+    },
+    "dependencies": {
+        "@ai-sdk/openai": "^3.0.41",
+        "@ai-sdk/react": "^3.0.118",
+        "@auth0/nextjs-auth0": "^4.16.0",
+        "ai": "^6.0.116",
+        "convex": "^1.34.1",
+        "framer-motion": "^12.38.0",
+        "googleapis": "^171.4.0",
+        "lucide-react": "^0.577.0",
+        "next": "16.2.0",
+        "react": "19.2.4",
+        "react-dom": "19.2.4",
+        "zod": "^4.3.6"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "tailwindcss": "^4",
+        "typescript": "^5"
+    }
 }

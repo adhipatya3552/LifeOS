@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,14 +35,15 @@ export function ProtectedShell({
       style={{ background: "var(--color-bg)" }}
     >
       <aside
-        className="glass flex w-full flex-shrink-0 flex-col border-b lg:w-64 lg:border-b-0 lg:border-r"
+        className="glass flex w-full shrink-0 flex-col border-b lg:w-60 lg:border-b-0 lg:border-r"
         style={{ borderColor: "var(--color-border)" }}
       >
+        {/* Logo */}
         <div
-          className="flex items-center gap-3 border-b px-4 py-4 sm:px-6 sm:py-5"
+          className="flex items-center gap-3 border-b px-4 py-4 sm:px-5"
           style={{ borderColor: "var(--color-border)" }}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary glow-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl gradient-primary glow-primary">
             <Brain className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -53,7 +54,8 @@ export function ProtectedShell({
           </div>
         </div>
 
-        <nav className="grid flex-1 grid-cols-2 gap-2 px-3 py-3 sm:grid-cols-4 lg:grid-cols-1 lg:gap-1 lg:px-3 lg:py-4">
+        {/* Navigation — compact flex column, no stretching */}
+        <nav className="flex flex-col gap-0.5 px-3 py-3">
           {navItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
@@ -61,7 +63,7 @@ export function ProtectedShell({
             return (
               <Link key={item.href} href={item.href}>
                 <div
-                  className="group relative flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200"
+                  className="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200"
                   style={{
                     background: isActive
                       ? "rgba(139,92,246,0.12)"
@@ -87,7 +89,7 @@ export function ProtectedShell({
                     />
                   ) : null}
                   <item.icon
-                    className="relative z-10 h-5 w-5 transition-colors"
+                    className="relative z-10 h-4 w-4 shrink-0 transition-colors"
                     style={{
                       color: isActive
                         ? "var(--color-primary-light)"
@@ -103,18 +105,22 @@ export function ProtectedShell({
           })}
         </nav>
 
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* User + Sign out */}
         <div
-          className="space-y-2 border-t p-3 sm:p-4"
+          className="space-y-1 border-t p-3"
           style={{ borderColor: "var(--color-border)" }}
         >
           <div
-            className="flex items-center gap-3 rounded-xl px-3 py-2"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5"
             style={{
               background: "var(--color-surface-2)",
               border: "1px solid var(--color-border)",
             }}
           >
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full gradient-primary">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full gradient-primary">
               <User className="w-4 h-4 text-white" />
             </div>
             <div className="overflow-hidden">
@@ -129,13 +135,13 @@ export function ProtectedShell({
           <a
             href="/auth/logout"
             id="logout-btn"
-            className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all duration-200 hover:opacity-80"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200 hover:opacity-80"
             style={{
               color: "var(--color-text-subtle)",
               border: "1px solid transparent",
             }}
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 shrink-0" />
             Sign out
           </a>
         </div>

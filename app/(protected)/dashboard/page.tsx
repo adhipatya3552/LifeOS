@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain, AlertTriangle } from "lucide-react";
+import { Brain } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { MessageBubble } from "@/components/chat/MessageBubble";
@@ -14,19 +14,20 @@ import { useCurrentUserRecord } from "@/lib/use-current-user";
 import { playCompletionChime } from "@/lib/notification-sound";
 
 export default function DashboardPage() {
-  const [requireApproval, setRequireApproval] = useState(false);
   const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevStatusRef = useRef<string>("ready");
 
-  // Read the user's notification preference from Convex
+  // Read agent behavior settings from Convex
   const currentUser = useCurrentUserRecord();
   const settings = useQuery(
     api.userSettings.getSettings,
     currentUser ? { userId: currentUser._id } : "skip"
   );
   const notificationsEnabled = settings?.actionNotifications ?? true;
+  // requireApproval is driven by the Settings page "Require approval for all write actions" toggle
+  const requireApproval = settings?.requireApprovalAll ?? false;
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -74,7 +75,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-full">
       <div
-        className="page-header flex items-center justify-between px-6 py-4"
+        className="page-header flex items-center px-6 py-4"
       >
         <div>
           <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
@@ -84,54 +85,6 @@ export default function DashboardPage() {
             Chat with your personal life agent
           </p>
         </div>
-
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <div className="relative">
-            <input
-              type="checkbox"
-              id="require-approval-toggle"
-              className="sr-only"
-              checked={requireApproval}
-              onChange={(event) => setRequireApproval(event.target.checked)}
-            />
-            <div
-              className="w-11 h-6 rounded-full transition-all duration-300"
-              style={{
-                background: requireApproval
-                  ? "var(--color-warning)"
-                  : "var(--color-surface-2)",
-                border: `1px solid ${requireApproval ? "var(--color-warning)" : "var(--color-border)"}`,
-              }}
-            >
-              <div
-                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-300"
-                style={{
-                  left: requireApproval ? "22px" : "2px",
-                }}
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <AlertTriangle
-              className="w-4 h-4"
-              style={{
-                color: requireApproval
-                  ? "var(--color-warning)"
-                  : "var(--color-text-subtle)",
-              }}
-            />
-            <span
-              className="text-sm font-medium"
-              style={{
-                color: requireApproval
-                  ? "var(--color-warning)"
-                  : "var(--color-text-muted)",
-              }}
-            >
-              Approve before acting
-            </span>
-          </div>
-        </label>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
