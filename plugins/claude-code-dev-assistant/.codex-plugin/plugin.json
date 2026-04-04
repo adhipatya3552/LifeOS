@@ -1,0 +1,42 @@
+{
+  "name": "claude-code-dev-assistant",
+  "version": "0.1.0",
+  "description": "Repo-local development assistant plugin for code generation, debugging, explanation, and feature delivery.",
+  "author": {
+    "name": "Local Workspace",
+    "email": "",
+    "url": ""
+  },
+  "homepage": "",
+  "repository": "",
+  "license": "UNLICENSED",
+  "keywords": [
+    "claude-code",
+    "development",
+    "debugging",
+    "code-generation",
+    "software-engineering"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Claude Code Dev Assistant",
+    "shortDescription": "Generate code, debug bugs, explain logic, and ship features step by step.",
+    "longDescription": "A repo-local plugin that turns Claude Code into a dependable day-to-day coding assistant for web apps, AI projects, and general software development.",
+    "developerName": "Local Workspace",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write",
+      "Analyze"
+    ],
+    "websiteURL": "",
+    "privacyPolicyURL": "",
+    "termsOfServiceURL": "",
+    "defaultPrompt": [
+      "Help me debug this error and explain the fix simply.",
+      "Generate a starter implementation for this feature.",
+      "Walk me through this code and suggest improvements."
+    ],
+    "brandColor": "#D97706"
+  }
+}

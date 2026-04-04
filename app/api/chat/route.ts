@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import {
+  APICallError,
   convertToModelMessages,
   stepCountIs,
   streamText,
@@ -31,6 +32,8 @@ import { mutateConvex, queryConvex } from "@/lib/convex-server";
 export const maxDuration = 60;
 
 const CONVERSATION_COOKIE = "lifeos_conversation_id";
+const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
+const MAX_OUTPUT_TOKEN_CAP = 8192;
 
 function getAIModel() {
   if (!process.env.OPENROUTER_API_KEY) {
@@ -42,7 +45,40 @@ function getAIModel() {
     baseURL: "https://openrouter.ai/api/v1",
   });
 
-  return openrouter(process.env.AI_MODEL || "openai/gpt-4.1-mini");
+  // Use .chat() to force the Chat Completions API (/v1/chat/completions).
+  // The default openrouter(model) uses the Responses API (/v1/responses) which
+  // silently drops maxOutputTokens (shows as `undefined` in the request body),
+  // causing the server to request the model's full 65 K context window and
+  // exceed OpenRouter free-tier credit limits with a 402 error.
+  return openrouter.chat(process.env.AI_MODEL || "openai/gpt-4.1-mini");
+}
+
+function getMaxOutputTokens() {
+  const rawValue = process.env.AI_MAX_OUTPUT_TOKENS;
+
+  if (!rawValue) {
+    return DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+
+  const parsedValue = Number.parseInt(rawValue, 10);
+
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+
+  return Math.min(parsedValue, MAX_OUTPUT_TOKEN_CAP);
+}
+
+function getStreamingErrorMessage(error: unknown) {
+  if (APICallError.isInstance(error) && error.statusCode === 402) {
+    return "LifeOS could not reach the AI model because the current OpenRouter credit or token budget is too low for this request. Please try again in a moment, reconnect if needed, or top up OpenRouter credits if the issue keeps happening.";
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "LifeOS hit an unexpected error while generating a reply.";
 }
 
 function getMessageText(message: UIMessage) {
@@ -251,7 +287,11 @@ export async function POST(request: Request) {
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools,
+    maxOutputTokens: getMaxOutputTokens(),
     stopWhen: stepCountIs(5),
+    onError: ({ error }) => {
+      console.error("Chat streaming failed", error);
+    },
     onFinish: async (event) => {
       if (!conversationId || !event.text.trim()) {
         return;
@@ -268,6 +308,8 @@ export async function POST(request: Request) {
     },
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    onError: getStreamingErrorMessage,
+  });
 }
 

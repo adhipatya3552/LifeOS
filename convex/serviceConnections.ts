@@ -61,6 +61,26 @@ export const listByAuth0Id = query({
   },
 });
 
+/** Look up a single service connection including stored OAuth tokens. */
+export const getConnectionByAuth0IdAndService = query({
+  args: { auth0Id: v.string(), service: serviceValidator },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_auth0Id", (q) => q.eq("auth0Id", args.auth0Id))
+      .unique();
+
+    if (!user) return null;
+
+    return await ctx.db
+      .query("serviceConnections")
+      .withIndex("by_userId_and_service", (q) =>
+        q.eq("userId", user._id).eq("service", args.service)
+      )
+      .unique();
+  },
+});
+
 export const upsertServiceConnection = mutation({
   args: {
     userId: v.id("users"),
@@ -72,6 +92,10 @@ export const upsertServiceConnection = mutation({
     accountName: v.optional(v.string()),
     accountPicture: v.optional(v.string()),
     scopes: v.array(v.string()),
+    // Direct Google OAuth tokens
+    accessToken: v.optional(v.string()),
+    refreshToken: v.optional(v.string()),
+    tokenExpiresAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -92,6 +116,9 @@ export const upsertServiceConnection = mutation({
         accountName: args.accountName,
         accountPicture: args.accountPicture,
         scopes: args.scopes,
+        accessToken: args.accessToken,
+        refreshToken: args.refreshToken ?? existing.refreshToken,
+        tokenExpiresAt: args.tokenExpiresAt,
         connectedAt: args.status === "connected" ? now : existing.connectedAt,
         updatedAt: now,
       });
@@ -110,11 +137,47 @@ export const upsertServiceConnection = mutation({
       accountName: args.accountName,
       accountPicture: args.accountPicture,
       scopes: args.scopes,
+      accessToken: args.accessToken,
+      refreshToken: args.refreshToken,
+      tokenExpiresAt: args.tokenExpiresAt,
       connectedAt: args.status === "connected" ? now : undefined,
       updatedAt: now,
     });
 
     await syncConnectedServicesForUser(ctx, args.userId);
     return connectionId;
+  },
+});
+
+/** Update only the access token after a refresh — does not touch other fields. */
+export const updateAccessToken = mutation({
+  args: {
+    auth0Id: v.string(),
+    service: serviceValidator,
+    accessToken: v.string(),
+    tokenExpiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_auth0Id", (q) => q.eq("auth0Id", args.auth0Id))
+      .unique();
+
+    if (!user) return;
+
+    const connection = await ctx.db
+      .query("serviceConnections")
+      .withIndex("by_userId_and_service", (q) =>
+        q.eq("userId", user._id).eq("service", args.service)
+      )
+      .unique();
+
+    if (!connection) return;
+
+    await ctx.db.patch(connection._id, {
+      accessToken: args.accessToken,
+      tokenExpiresAt: args.tokenExpiresAt,
+      updatedAt: Date.now(),
+    });
   },
 });

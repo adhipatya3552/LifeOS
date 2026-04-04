@@ -5,19 +5,47 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, AlertTriangle } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ActionCard } from "@/components/chat/ActionCard";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { useCurrentUserRecord } from "@/lib/use-current-user";
+import { playCompletionChime } from "@/lib/notification-sound";
 
 export default function DashboardPage() {
   const [requireApproval, setRequireApproval] = useState(false);
   const [input, setInput] = useState("");
+  const [chatError, setChatError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prevStatusRef = useRef<string>("ready");
+
+  // Read the user's notification preference from Convex
+  const currentUser = useCurrentUserRecord();
+  const settings = useQuery(
+    api.userSettings.getSettings,
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
+  const notificationsEnabled = settings?.actionNotifications ?? true;
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
     }),
+    onError: (error) => {
+      setChatError(error.message || "LifeOS could not complete that request.");
+    },
   });
+
+  // Play the completion chime when streaming finishes
+  useEffect(() => {
+    const wasStreaming = prevStatusRef.current === "streaming" || prevStatusRef.current === "submitted";
+    const isNowReady = status === "ready";
+    if (wasStreaming && isNowReady && notificationsEnabled && messages.length > 0) {
+      playCompletionChime();
+    }
+    prevStatusRef.current = status;
+  }, [status, notificationsEnabled, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,6 +61,7 @@ export default function DashboardPage() {
       return;
     }
 
+    setChatError(null);
     await sendMessage(
       { text },
       {
@@ -45,8 +74,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-full">
       <div
-        className="flex items-center justify-between px-6 py-4 border-b glass"
-        style={{ borderColor: "var(--color-border)" }}
+        className="page-header flex items-center justify-between px-6 py-4"
       >
         <div>
           <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
@@ -107,6 +135,21 @@ export default function DashboardPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+        {chatError ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl px-4 py-3 text-sm"
+            style={{
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.24)",
+              color: "var(--color-danger)",
+            }}
+          >
+            {chatError}
+          </motion.div>
+        ) : null}
+
         <AnimatePresence>
           {isEmpty ? (
             <motion.div

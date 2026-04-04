@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useTransition } from "react";
 import { useQuery } from "convex/react";
@@ -61,7 +61,7 @@ export default function HistoryPage() {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto overflow-x-clip">
       <div
-        className="border-b glass px-4 py-6 sm:px-8"
+        className="page-header px-4 py-6 sm:px-8"
         style={{ borderColor: "var(--color-border)" }}
       >
         <h1 className="mb-1 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
@@ -90,6 +90,9 @@ export default function HistoryPage() {
           const service = serviceIcons[action.service as keyof typeof serviceIcons];
           const status = statusConfig[action.status as keyof typeof statusConfig];
           const StatusIcon = status?.icon || Clock;
+
+          // Skip rendering if service type is unrecognised (data integrity guard)
+          if (!service) return null;
 
           return (
             <motion.div

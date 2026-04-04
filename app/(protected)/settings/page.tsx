@@ -1,12 +1,39 @@
-﻿"use client";
+"use client";
 
-import { Brain, Shield, Zap, Bell } from "lucide-react";
+import { Brain, Shield, Bell, Loader2 } from "lucide-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useCurrentUserRecord } from "@/lib/use-current-user";
 
 export default function SettingsPage() {
+  const currentUser = useCurrentUserRecord();
+  const settings = useQuery(
+    api.userSettings.getSettings,
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
+  const upsertSettings = useMutation(api.userSettings.upsertSettings);
+
+  const isLoading = currentUser === undefined || settings === undefined;
+
+  type SettingKey =
+    | "autoApproveLowRisk"
+    | "requireApprovalAll"
+    | "stepUpAuth"
+    | "auditLog"
+    | "actionNotifications";
+
+  function handleToggle(field: SettingKey) {
+    if (!currentUser || !settings) return;
+    upsertSettings({
+      userId: currentUser._id,
+      [field]: !(settings as Record<string, unknown>)[field],
+    }).catch(console.error);
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto overflow-x-clip">
       <div
-        className="border-b glass px-4 py-6 sm:px-8"
+        className="page-header px-4 py-6 sm:px-8"
         style={{ borderColor: "var(--color-border)" }}
       >
         <h1 className="mb-1 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
@@ -17,71 +44,60 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="w-full max-w-2xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
-        <Section icon={Brain} color="#8b5cf6" title="Agent Behavior">
-          <ToggleSetting
-            id="auto-approve-low-risk"
-            label="Auto-approve low-risk actions"
-            description="Allow the agent to execute read-only actions (inbox summary, schedule view) without confirmation."
-            defaultChecked
+      {isLoading ? (
+        <div className="flex flex-1 items-center justify-center py-24">
+          <Loader2
+            className="h-8 w-8 animate-spin"
+            style={{ color: "var(--color-primary)" }}
           />
-          <ToggleSetting
-            id="require-approval-all"
-            label="Require approval for all write actions"
-            description="Pause before creating events, drafting emails, or modifying documents."
-            defaultChecked={false}
-          />
-        </Section>
+        </div>
+      ) : (
+        <div className="w-full max-w-2xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
+          <Section icon={Brain} color="#8b5cf6" title="Agent Behavior">
+            <ToggleSetting
+              id="auto-approve-low-risk"
+              label="Auto-approve low-risk actions"
+              description="Allow the agent to execute read-only actions (inbox summary, schedule view) without confirmation."
+              checked={settings?.autoApproveLowRisk ?? true}
+              onChange={() => handleToggle("autoApproveLowRisk")}
+            />
+            <ToggleSetting
+              id="require-approval-all"
+              label="Require approval for all write actions"
+              description="Pause before creating events, drafting emails, or modifying documents."
+              checked={settings?.requireApprovalAll ?? false}
+              onChange={() => handleToggle("requireApprovalAll")}
+            />
+          </Section>
 
-        <Section icon={Shield} color="#4285f4" title="Security">
-          <ToggleSetting
-            id="step-up-auth"
-            label="Step-up auth for sensitive actions"
-            description="Require re-authentication via Auth0 before sending emails or deleting events."
-            defaultChecked
-          />
-          <ToggleSetting
-            id="audit-log"
-            label="Keep action audit log"
-            description="Store a history of all agent actions in Convex for review."
-            defaultChecked
-          />
-        </Section>
+          <Section icon={Shield} color="#4285f4" title="Security">
+            <ToggleSetting
+              id="step-up-auth"
+              label="Step-up auth for sensitive actions"
+              description="Require re-authentication via Auth0 before sending emails or deleting events."
+              checked={settings?.stepUpAuth ?? true}
+              onChange={() => handleToggle("stepUpAuth")}
+            />
+            <ToggleSetting
+              id="audit-log"
+              label="Keep action audit log"
+              description="Store a history of all agent actions in Convex for review."
+              checked={settings?.auditLog ?? true}
+              onChange={() => handleToggle("auditLog")}
+            />
+          </Section>
 
-        <Section icon={Bell} color="#f59e0b" title="Notifications">
-          <ToggleSetting
-            id="action-completed"
-            label="Notify when actions complete"
-            description="Show a notification when the agent successfully completes a task."
-            defaultChecked
-          />
-        </Section>
-
-        <Section icon={Zap} color="#06b6d4" title="AI Model">
-          <div className="space-y-1">
-            <label
-              className="text-sm font-medium"
-              style={{ color: "var(--color-text)" }}
-            >
-              Provider
-            </label>
-            <p className="mb-2 text-sm" style={{ color: "var(--color-text-muted)" }}>
-              Configured via <code style={{ color: "var(--color-primary-light)" }}>OPENROUTER_API_KEY</code>{" "}
-              and <code style={{ color: "var(--color-primary-light)" }}>AI_MODEL</code> on the server.
-            </p>
-            <div
-              className="rounded-xl px-4 py-3 text-sm"
-              style={{
-                background: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              Current: <span style={{ color: "var(--color-primary-light)" }}>OpenRouter</span>
-            </div>
-          </div>
-        </Section>
-      </div>
+          <Section icon={Bell} color="#f59e0b" title="Notifications">
+            <ToggleSetting
+              id="action-completed"
+              label="Play a sound when tasks complete"
+              description="Plays a soft chime when the AI agent finishes responding to your request."
+              checked={settings?.actionNotifications ?? true}
+              onChange={() => handleToggle("actionNotifications")}
+            />
+          </Section>
+        </div>
+      )}
     </div>
   );
 }
@@ -125,16 +141,18 @@ function ToggleSetting({
   id,
   label,
   description,
-  defaultChecked,
+  checked,
+  onChange,
 }: {
   id: string;
   label: string;
   description: string;
-  defaultChecked: boolean;
+  checked: boolean;
+  onChange: () => void;
 }) {
   return (
-    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-      <div>
+    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex-1 min-w-0">
         <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
           {label}
         </p>
@@ -142,15 +160,30 @@ function ToggleSetting({
           {description}
         </p>
       </div>
-      <label className="relative cursor-pointer flex-shrink-0" htmlFor={id}>
-        <input id={id} type="checkbox" defaultChecked={defaultChecked} className="peer sr-only" />
+      <button
+        id={id}
+        role="switch"
+        aria-checked={checked}
+        onClick={onChange}
+        className="relative flex-shrink-0 cursor-pointer"
+        style={{ WebkitTapHighlightColor: "transparent" }}
+      >
         <div
-          className="h-5 w-10 rounded-full bg-slate-700 transition-all duration-300 peer-checked:bg-violet-500"
-          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+          className="h-6 w-11 rounded-full transition-all duration-300"
+          style={{
+            background: checked ? "var(--color-primary)" : "var(--color-surface-2)",
+            border: `1px solid ${checked ? "var(--color-primary)" : "var(--color-border)"}`,
+          }}
         >
-          <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-300 peer-checked:translate-x-5" />
+          <div
+            className="absolute h-5 w-5 rounded-full bg-white shadow transition-all duration-300"
+            style={{
+              top: "1px",
+              left: checked ? "22px" : "2px",
+            }}
+          />
         </div>
-      </label>
+      </button>
     </div>
   );
 }

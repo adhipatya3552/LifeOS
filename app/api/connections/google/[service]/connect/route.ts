@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { auth0 } from "@/lib/auth0";
-import {
-  getCompletePagePath,
-  getConnectionsRedirectUrl,
-} from "@/lib/google-service-flow";
-import {
-  getConnectAccountFailureMessage,
-  validateGoogleServiceConnection,
-} from "@/lib/google-connection-diagnostics";
+import { getConnectionsRedirectUrl } from "@/lib/google-service-flow";
 import { getGoogleServiceConfig } from "@/lib/google-service-registry";
+import {
+  buildGoogleAuthUrl,
+  getGoogleCallbackUrl,
+  getGoogleOAuthCredentials,
+} from "@/lib/google-oauth";
+
+/** Cookie name used to carry the CSRF state token through the OAuth round-trip. */
+export const OAUTH_STATE_COOKIE = "lifeos_oauth_state";
 
 async function startConnectionFlow(
   request: Request,
   service: string
-) {
+): Promise<Response> {
   const config = getGoogleServiceConfig(service);
 
   if (!config) {
@@ -33,43 +35,51 @@ async function startConnectionFlow(
     return NextResponse.redirect(loginUrl);
   }
 
-  const validation = await validateGoogleServiceConnection(config.id);
+  const credentials = getGoogleOAuthCredentials();
 
-  if (!validation.ok) {
-    return NextResponse.redirect(
-      new URL(
-        getConnectionsRedirectUrl(config.id, "error", validation.message),
-        request.url
-      )
-    );
-  }
-
-  if ("warning" in validation && validation.warning) {
-    console.warn(
-      `[Connections] ${config.id} preflight warning: ${validation.warning}`
-    );
-  }
-
-  try {
-    return await auth0.connectAccount({
-      connection: config.auth0Connection,
-      scopes: config.scopes,
-      returnTo: getCompletePagePath(config.id),
-    });
-  } catch (error) {
-    console.error(`[Connections] Failed to start ${config.id} connect flow:`, error);
-
+  if (!credentials) {
     return NextResponse.redirect(
       new URL(
         getConnectionsRedirectUrl(
           config.id,
           "error",
-          getConnectAccountFailureMessage(config.id, error)
+          "Google OAuth is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local and restart the server."
         ),
         request.url
       )
     );
   }
+
+  // Generate a CSRF state token.  It carries the service name so the callback
+  // knows which service is being connected without any other state storage.
+  const nonce = randomBytes(16).toString("hex");
+  const statePayload = JSON.stringify({ service: config.id, nonce });
+  const state = Buffer.from(statePayload).toString("base64url");
+
+  const baseUrl =
+    process.env.APP_BASE_URL?.replace(/\/$/, "") ||
+    new URL(request.url).origin;
+
+  const redirectUri = getGoogleCallbackUrl(baseUrl);
+
+  const authUrl = buildGoogleAuthUrl({
+    clientId: credentials.clientId,
+    redirectUri,
+    scopes: config.scopes,
+    state,
+  });
+
+  const response = NextResponse.redirect(authUrl);
+
+  // Store the state in an httpOnly cookie so the callback can verify it
+  response.cookies.set(OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 600, // 10 minutes — plenty of time for the OAuth round-trip
+    path: "/",
+  });
+
+  return response;
 }
 
 export async function GET(

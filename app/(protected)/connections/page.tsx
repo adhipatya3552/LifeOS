@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Shield } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useConvexEnabled } from "@/app/ConvexClientProvider";
@@ -53,7 +53,7 @@ export default function ConnectionsPage() {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto overflow-x-clip">
       <div
-        className="border-b glass px-4 py-6 sm:px-8"
+        className="page-header px-4 py-6 sm:px-8"
         style={{ borderColor: "var(--color-border)" }}
       >
         <h1 className="mb-1 text-2xl font-bold" style={{ color: "var(--color-text)" }}>
@@ -111,7 +111,7 @@ export default function ConnectionsPage() {
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
             style={{ background: "rgba(139,92,246,0.15)" }}
           >
-            Secure
+            <Shield className="h-5 w-5" style={{ color: "var(--color-primary-light)" }} />
           </div>
           <div>
             <p className="mb-1 font-semibold" style={{ color: "var(--color-primary-light)" }}>

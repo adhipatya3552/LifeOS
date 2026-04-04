@@ -18,7 +18,7 @@ export default async function ServiceAuthorizePage({
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto overflow-x-clip">
       <div
-        className="border-b glass px-4 py-6 sm:px-8"
+        className="page-header px-4 py-6 sm:px-8"
         style={{ borderColor: "var(--color-border)" }}
       >
         <h1 className="mb-1 text-2xl font-bold" style={{ color: "var(--color-text)" }}>

@@ -29,6 +29,10 @@ export default defineSchema({
     accountName: v.optional(v.string()),
     accountPicture: v.optional(v.string()),
     scopes: v.array(v.string()),
+    // Direct Google OAuth tokens (replaces Auth0 Token Vault)
+    accessToken: v.optional(v.string()),
+    refreshToken: v.optional(v.string()),
+    tokenExpiresAt: v.optional(v.number()),
     connectedAt: v.optional(v.number()),
     updatedAt: v.number(),
   })
@@ -61,8 +65,8 @@ export default defineSchema({
       v.literal("drive")
     ),
     toolName: v.string(),
-    actionType: v.string(), // "create_event", "send_email", etc.
-    description: v.string(), // Human-readable summary
+    actionType: v.string(),
+    description: v.string(),
     status: v.union(
       v.literal("pending_approval"),
       v.literal("approved"),
@@ -74,6 +78,17 @@ export default defineSchema({
     result: v.optional(v.any()),
     metadata: v.optional(v.any()),
     createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  // Persisted Settings page preferences
+  userSettings: defineTable({
+    userId: v.id("users"),
+    autoApproveLowRisk: v.boolean(),
+    requireApprovalAll: v.boolean(),
+    stepUpAuth: v.boolean(),
+    auditLog: v.boolean(),
+    actionNotifications: v.boolean(),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),
 });

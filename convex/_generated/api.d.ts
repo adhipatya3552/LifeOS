@@ -12,6 +12,7 @@ import type * as agentActions from "../agentActions.js";
 import type * as conversations from "../conversations.js";
 import type * as messages from "../messages.js";
 import type * as serviceConnections from "../serviceConnections.js";
+import type * as userSettings from "../userSettings.js";
 import type * as users from "../users.js";
 
 import type {
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   messages: typeof messages;
   serviceConnections: typeof serviceConnections;
+  userSettings: typeof userSettings;
   users: typeof users;
 }>;
 

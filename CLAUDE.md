@@ -1,5 +1,7 @@
 @AGENTS.md
 
+Use the `claude-code-dev-assistant` skill from `.claude/skills/claude-code-dev-assistant` for day-to-day coding help such as code generation, debugging, simple explanations, and step-by-step feature work.
+
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.
 
