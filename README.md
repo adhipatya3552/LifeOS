@@ -1,16 +1,8 @@
 # LifeOS — Your Personal AI Life Agent
 
-> Chat with an AI that manages your Gmail, Google Calendar, and Google Drive — autonomously, securely, and all in one place.
+> Type a message. Your agent handles the rest.
 
----
-
-## 🌟 Project Overview
-
-**LifeOS** is a personal AI-powered life management assistant. Instead of juggling multiple apps, you simply *talk* to LifeOS in plain English and it takes care of the rest — summarising your inbox, checking your schedule, finding free slots, reading documents, and more.
-
-Built as a modern full-stack web application, LifeOS connects your Google services through direct OAuth 2.0, stores everything in your own private database, and uses a powerful language model to understand your requests and act on them intelligently.
-
-**This is your own personal agent — built by you, running under your own accounts, and fully under your control.**
+LifeOS is a personal AI assistant you chat with in your browser. You type a request in plain English — *"what emails do I have from today?"* or *"book me a 1-hour slot tomorrow afternoon"* — and it connects to your real Gmail, Google Calendar, and Google Drive accounts to get it done. Every message, action, and setting is saved to your own private database.
 
 ---
 
@@ -60,173 +52,137 @@ Built as a modern full-stack web application, LifeOS connects your Google servic
 
 ---
 
-## 🛠 Tech Stack
+## How it is built
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Next.js 16 (App Router, Turbopack) |
-| **Authentication** | Auth0 v4 + Google OAuth 2.0 |
-| **Database & Backend** | Convex (real-time, serverless) |
-| **AI Model** | OpenRouter → GPT-4.1 Mini |
-| **AI SDK** | Vercel AI SDK v6 |
-| **Styling** | Vanilla CSS with CSS variables, Framer Motion |
-| **Google APIs** | Gmail API, Calendar API, Drive API, Docs API |
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Authentication | Auth0 v4 + Google OAuth 2.0 |
+| Database | Convex (real-time, serverless) |
+| AI model | OpenRouter (default: GPT-4.1 Mini) |
+| AI SDK | Vercel AI SDK v6 |
+| Google APIs | Gmail API, Calendar API, Drive API, Docs API |
+| Animations | Framer Motion |
+| Icons | Lucide React |
+| Styling | Vanilla CSS with CSS custom properties + Tailwind v4 |
 
 ---
 
 ## ⚠️ "Google hasn't verified this app" — Don't Panic, You're Safe
 
-When you sign in with Google or connect your Gmail, Calendar, or Drive, you might see a screen that says:
+When you connect a Google service you will see a screen like this:
 
 > **"Google hasn't verified this app"**
 > *The app is requesting access to sensitive info in your Google Account. Until the developer verifies this app with Google, you shouldn't use it.*
 
-**This is completely normal for a personal project, and your data is 100% safe.** Here's why:
+This is **normal** for any personal project that has not gone through Google's formal app-review programme. It does not mean anything is wrong.
 
-### Why does this warning appear?
+**Your data is safe because:**
 
-Google shows this warning for any app that hasn't gone through their formal **OAuth verification process**. That verification is designed for apps distributed to thousands of strangers — it involves submitting documentation, a privacy policy, and a security review that can take weeks.
+- Your Google password is never seen by LifeOS. Sign-in goes through Google and Auth0 only.
+- OAuth tokens are stored in your own private Convex database, not on any shared server.
+- The AI only acts on your data when you explicitly ask it to.
+- Nothing is shared or sold to any third party.
+- You can revoke access at any time at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
-**LifeOS is a personal AI agent built for *you*.** It is not a public product. Because it hasn't been submitted for Google's formal review process yet, Google displays this generic caution screen as a precaution for all unreviewed apps.
+**To get past the screen:**
 
-### Is my data at risk?
+1. Click **"Advanced"** (bottom-left of the warning screen)
+2. Click **"Go to LifeOS (unsafe)"** — "unsafe" is Google's standard label for unreviewed apps, not a real warning about this app
+3. Click **"Allow"**
 
-**No.** Here's exactly what happens with your data:
-
-- ✅ Your Google password is **never seen or stored** by LifeOS. Sign-in is handled entirely by Google and Auth0 — LifeOS only receives a confirmation that you signed in successfully.
-- ✅ Any Gmail, Calendar, or Drive access tokens are stored **only in your own private Convex database** — isolated to this project and accessible only by you.
-- ✅ LifeOS only reads or acts on your data **when you explicitly ask it to** (e.g. *"summarise my inbox"* or *"what's on my calendar today?"*).
-- ✅ No data is sold, shared, or forwarded to any third party. Ever.
-- ✅ You can revoke LifeOS's access at any time by visiting [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and removing it — no questions asked.
-
-### How do I get past the warning?
-
-1. On the warning screen, click **"Advanced"** (small link in the bottom-left corner)
-2. Then click **"Go to LifeOS (unsafe)"** — the word *"unsafe"* is Google's standard legal boilerplate shown for **every** unverified app and does **not** reflect any actual risk
-3. Review the list of permissions Google shows and click **"Allow"**
-
-You're in! Once you allow access, the warning will **not appear again** for that service.
-
-### When will the warning disappear permanently?
-
-Once LifeOS is submitted to Google's OAuth verification programme and approved, the warning disappears for all users. This is a one-time administrative process on the developer's side and has no effect on the safety or functionality of the app in the meantime.
+The warning will not appear again for that service after you allow it.
 
 ---
 
-## 🚀 Getting Started
+## Setup
 
-Run the development server:
+### 1. Environment variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
 
 ```bash
-npm run dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+All required variables are listed and explained in `.env.example`.
 
----
+### 2. Auth0
 
-## ⚙️ Setup & Configuration
+Create a **Regular Web Application** in your [Auth0 dashboard](https://manage.auth0.com/) and set:
 
-### 1. Required Auth0 setup
+| Auth0 field | Value |
+|---|---|
+| Allowed Callback URLs | `http://localhost:3000/auth/callback` |
+| Allowed Logout URLs | `http://localhost:3000` |
+| Allowed Web Origins | `http://localhost:3000` |
 
-Before testing `Sign in` or `Sign up`, replace the Auth0 placeholders in `.env.local`:
+Copy the Domain, Client ID, and Client Secret into `.env.local`.
 
-```bash
-AUTH0_DOMAIN=your-tenant.us.auth0.com
-AUTH0_CLIENT_ID=your_real_client_id
-AUTH0_CLIENT_SECRET=your_real_client_secret
-AUTH0_SECRET=your_real_32_plus_char_secret
-APP_BASE_URL=http://localhost:3000
-```
+Enable **Google** as a social connection in Auth0 → Authentication → Social.
 
-Use `AUTH0_DOMAIN` without `https://`.
+### 3. Google Cloud
 
-In your Auth0 application settings, configure:
-
-- Allowed Callback URLs: `http://localhost:3000/auth/callback`
-- Allowed Logout URLs: `http://localhost:3000`
-- Allowed Web Origins: `http://localhost:3000`
-
-`AUTH0_CLIENT_ID` and `AUTH0_CLIENT_SECRET` must come from your Auth0 **Regular Web Application**. Do not point them at a Machine-to-Machine app. If you also use Auth0 Management API features in this repo, those credentials belong in `AUTH0_MANAGEMENT_CLIENT_ID` and `AUTH0_MANAGEMENT_CLIENT_SECRET`, and they should usually be a separate Machine-to-Machine application.
-
-If these values are missing or still placeholders, the app fails fast with a clear Auth0 configuration error instead of an OpenID discovery 404.
-
-If you change `AUTH0_SECRET`, switch tenants, or move between incompatible local auth setups, your browser can keep stale Auth0 cookies. The app clears invalid Auth0 cookies automatically and redirects you to a fresh login flow instead of crashing with `Invalid Compact JWE`.
-
----
-
-### 2. Google OAuth 2.0 setup (for Gmail / Calendar / Drive)
-
-LifeOS uses direct Google OAuth 2.0 (not Auth0 Token Vault) to connect Google services. You need a Google Cloud project with an OAuth 2.0 client.
-
-**Steps:**
-
-1. Go to [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → **Credentials**
-2. Create → OAuth 2.0 Client ID → **Web Application**
-3. Add Authorized Redirect URIs:
-   - `http://localhost:3000/api/auth/google/callback` (local development)
-   - Your production URL + `/api/auth/google/callback` (when deployed)
-4. Also add `https://YOUR_AUTH0_DOMAIN/login/callback` for the Auth0 sign-in flow
-5. Enable these APIs in the Google API Library:
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → **APIs & Services → Credentials**
+2. Create an OAuth 2.0 Client ID (Web Application)
+3. Add these Authorised Redirect URIs:
+   - `http://localhost:3000/api/auth/google/callback`
+   - `https://YOUR_AUTH0_DOMAIN/login/callback`
+4. Enable these APIs in the library:
    - Gmail API
    - Google Calendar API
    - Google Drive API
    - Google Docs API
-6. Copy the Client ID and Secret into `.env.local`:
+5. Copy the Client ID and Secret into `.env.local`
 
-```bash
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-```
+> If your Google Cloud project is in **Testing** status, go to **APIs & Services → Audience** and either add your email as a test user or click **Publish App**.
 
-Required Google scopes (the app requests these automatically):
-
-| Service | Scopes |
-|---|---|
-| Gmail | `gmail.readonly`, `gmail.compose`, `gmail.send` |
-| Calendar | `calendar.events` |
-| Drive | `documents`, `drive.metadata.readonly` |
-| All | `openid`, `email`, `profile` |
-
-> **Tip:** If your Google Cloud project is in "Testing" status on the OAuth consent screen, only users listed as Test Users can sign in. Go to **APIs & Services → Audience** and either add your email as a test user, or click "Publish App" to remove the restriction entirely.
-
----
-
-### 3. Convex setup
+### 4. Convex
 
 ```bash
 npx convex dev
 ```
 
-This creates your Convex deployment and populates `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` in `.env.local` automatically.
+This sets up your database and writes `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_DEPLOYMENT` into `.env.local` automatically.
+
+### 5. OpenRouter
+
+Sign up at [openrouter.ai](https://openrouter.ai), create an API key, and add it to `.env.local`.
+
+Default model: `openai/gpt-4.1-mini`. Change it via the `AI_MODEL` variable.
 
 ---
 
-### 4. OpenRouter AI setup
-
-Sign up at [openrouter.ai](https://openrouter.ai), create an API key, and add it to `.env.local`:
+## Running locally
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-...
-AI_MODEL=openai/gpt-4.1-mini   # or any OpenRouter-supported model
+# Terminal 1 — Convex dev server
+npx convex dev
+
+# Terminal 2 — Next.js dev server
+npm run dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## ✅ Verification
+## Deploying to Vercel
+
+1. Push your code to GitHub
+2. Import the repo in [vercel.com](https://vercel.com)
+3. Add all environment variables in **Project → Settings → Environment Variables** (`.env.local` is gitignored and not included in the repo)
+4. Set `APP_BASE_URL` to your Vercel production URL
+5. Also update the Authorised Redirect URIs in Google Cloud Console to include your production URL
+
+---
+
+## Useful commands
 
 ```bash
-npm run typecheck
-npm run build
+npm run dev          # Start development server
+npm run build        # Production build
+npm run typecheck    # TypeScript check
+npx convex dev       # Start Convex backend
+npx convex codegen   # Regenerate Convex TypeScript types
 ```
-
----
-
-## 📚 Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Auth0 Next.js SDK](https://auth0.github.io/nextjs-auth0/)
-- [Convex Documentation](https://docs.convex.dev/)
-- [OpenRouter](https://openrouter.ai/)
-- [Vercel AI SDK](https://sdk.vercel.ai/docs)
-- [Google Cloud Console](https://console.cloud.google.com/)
