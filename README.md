@@ -186,3 +186,17 @@ npm run typecheck    # TypeScript check
 npx convex dev       # Start Convex backend
 npx convex codegen   # Regenerate Convex TypeScript types
 ```
+
+---
+
+## Bonus Blog Post
+
+### Building LifeOS: A Journey into Secure AI Automation
+
+Building **LifeOS** for the "Authorized to Act" hackathon has been an exhilarating yet challenging journey. Our goal was simple but ambitious: create a personal AI agent that can manage your digital life—emails, calendar, and documents—without compromising security. The cornerstone of this achievement was the integration of **Auth0 Token Vault**.
+
+Early in development, we faced a significant technical hurdle: how to allow an AI model to act on behalf of a user across multiple Google services while keeping OAuth tokens completely isolated from the application logic. Traditional methods often involve storing tokens in a database where the application (and potentially the AI) can access them directly. This didn't feel right for a truly secure "Life OS."
+
+By leveraging **Auth0 Token Vault**, we implemented a credential-free architecture. The Vault handles the exchange and refresh of Google OAuth tokens, and our Convex backend only communicates with the Vault to trigger actions via secure IDs. This means the AI agent can "request" an email be sent or an event be created, but it never actually touches the raw token. This abstraction layer solved our biggest security concern and allowed us to focus on the "intelligence" and user experience of the agent.
+
+One of our proudest achievements was seeing the agent seamlessly transition from summarizing a complex thread of Gmail messages to booking a meeting in Google Calendar, all from a single natural language prompt. It felt like we were finally building the future of personal productivity. This journey taught us that with the right security primitives like Token Vault, we can build powerful AI tools that users can actually trust with their most sensitive data.

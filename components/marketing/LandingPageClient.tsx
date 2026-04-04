@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { BlogSection } from "@/components/marketing/BlogSection";
 import {
   Brain,
   Mail,
@@ -355,6 +356,8 @@ export function LandingPageClient() {
           </motion.div>
         </div>
       </section>
+
+      <BlogSection />
 
       <section className="px-4 py-20 text-center sm:px-6 sm:py-24">
         <motion.div
