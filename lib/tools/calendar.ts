@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { z } from "zod";
+import { isLifeOsDemoMode, missingAccessTokenResult } from "@/lib/demo-mode";
 import type { GoogleToolContext } from "@/lib/tools/gmail";
 
 export const getScheduleInputSchema = z.object({
@@ -87,6 +88,9 @@ export async function executeGetSchedule(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Calendar");
+    }
     const today = getTodayInKolkata();
     const events =
       range === "today"
@@ -156,6 +160,9 @@ export async function executeCreateEvent(
   const { title, startTime, endTime, attendees, description } = input;
 
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Calendar");
+    }
     return {
       success: true,
       mock: true,
@@ -195,6 +202,9 @@ export async function executeRescheduleEvent(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Calendar");
+    }
     return {
       success: true,
       mock: true,
@@ -230,21 +240,96 @@ export async function executeFindFreeSlot(
     preferredDate,
     workingHoursStart = "09:00",
     workingHoursEnd = "18:00",
-  }: z.infer<typeof findFreeSlotInputSchema>
+  }: z.infer<typeof findFreeSlotInputSchema>,
+  { accessToken }: GoogleToolContext
 ) {
-  const slots = [
-    `${preferredDate}T${workingHoursStart}:00`,
-    `${preferredDate}T11:00:00`,
-    `${preferredDate}T15:00:00`,
-  ];
+  const mockSlots = () => {
+    const slots = [
+      `${preferredDate}T${workingHoursStart}:00+05:30`,
+      `${preferredDate}T11:00:00+05:30`,
+      `${preferredDate}T15:00:00+05:30`,
+    ];
 
-  return {
-    success: true,
-    mock: true,
-    suggestedSlots: slots.map((slot) => ({
-      start: slot,
-      end: new Date(new Date(slot).getTime() + duration * 60000).toISOString(),
-    })),
-    message: `Found ${slots.length} available ${duration}-minute slots on ${preferredDate}`,
+    return {
+      success: true as const,
+      mock: true as const,
+      suggestedSlots: slots.map((slot) => ({
+        start: slot,
+        end: new Date(new Date(slot).getTime() + duration * 60000).toISOString(),
+      })),
+      message: `Found ${slots.length} available ${duration}-minute slots on ${preferredDate}`,
+    };
   };
+
+  if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Calendar");
+    }
+    return mockSlots();
+  }
+
+  try {
+    const calendar = getCalendarClient(accessToken);
+    const [startHour, startMinute] = workingHoursStart.split(":").map(Number);
+    const [endHour, endMinute] = workingHoursEnd.split(":").map(Number);
+
+    const dayStart = new Date(`${preferredDate}T00:00:00+05:30`);
+    dayStart.setHours(startHour, startMinute || 0, 0, 0);
+    const dayEnd = new Date(`${preferredDate}T00:00:00+05:30`);
+    dayEnd.setHours(endHour, endMinute || 0, 0, 0);
+
+    const response = await calendar.events.list({
+      calendarId: "primary",
+      timeMin: dayStart.toISOString(),
+      timeMax: dayEnd.toISOString(),
+      singleEvents: true,
+      orderBy: "startTime",
+    });
+
+    const busy = (response.data.items || [])
+      .map((event) => {
+        const start = event.start?.dateTime || event.start?.date;
+        const end = event.end?.dateTime || event.end?.date;
+        if (!start || !end) return null;
+        return { start: new Date(start).getTime(), end: new Date(end).getTime() };
+      })
+      .filter((item): item is { start: number; end: number } => item !== null)
+      .sort((a, b) => a.start - b.start);
+
+    const durationMs = duration * 60_000;
+    const suggestedSlots: { start: string; end: string }[] = [];
+    let cursor = dayStart.getTime();
+
+    for (const block of busy) {
+      if (suggestedSlots.length >= 5) break;
+      if (block.start - cursor >= durationMs) {
+        suggestedSlots.push({
+          start: new Date(cursor).toISOString(),
+          end: new Date(cursor + durationMs).toISOString(),
+        });
+      }
+      cursor = Math.max(cursor, block.end);
+    }
+
+    while (suggestedSlots.length < 5 && cursor + durationMs <= dayEnd.getTime()) {
+      suggestedSlots.push({
+        start: new Date(cursor).toISOString(),
+        end: new Date(cursor + durationMs).toISOString(),
+      });
+      cursor += durationMs;
+    }
+
+    return {
+      success: true,
+      mock: false,
+      suggestedSlots,
+      message:
+        suggestedSlots.length > 0
+          ? `Found ${suggestedSlots.length} available ${duration}-minute slots on ${preferredDate}`
+          : `No free ${duration}-minute slots found on ${preferredDate} within working hours.`,
+    };
+  } catch (error) {
+    console.error("[Calendar] find_free_slot error:", error);
+    return { success: false, error: "Failed to find free slots" };
+  }
 }

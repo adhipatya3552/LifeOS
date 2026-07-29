@@ -33,10 +33,11 @@ LifeOS is a personal AI assistant you chat with in your browser. You type a requ
 - **Create documents** — generate new Google Docs with AI-written content
 
 ### 🔐 Security & Connections
-- Secure sign-in via **Auth0 + Google OAuth 2.0**
-- Each Google service (Gmail, Calendar, Drive) is connected **individually** with granular scopes
-- OAuth tokens stored in your **own private Convex database** — never on a shared server
+- Secure sign-in via **Auth0**
+- Each Google service (Gmail, Calendar, Drive) is connected **individually** with **direct Google OAuth** and granular scopes
+- OAuth tokens stored in your **own private Convex database** (not Auth0 Token Vault)
 - Automatic token refresh — connections stay alive without re-authorising
+- Human-in-the-loop approval for write actions (and always for sending email when enabled)
 - Revoke access to any service at any time from the Connections page
 
 ### ⚙️ Settings & Control
@@ -191,12 +192,15 @@ npx convex codegen   # Regenerate Convex TypeScript types
 
 ## Bonus Blog Post
 
-### Building LifeOS: A Journey into Secure AI Automation
+### Building LifeOS: Secure AI Automation with Clear Control
 
-Building **LifeOS** for the "Authorized to Act" hackathon has been an exhilarating yet challenging journey. Our goal was simple but ambitious: create a personal AI agent that can manage your digital life—emails, calendar, and documents—without compromising security. The cornerstone of this achievement was the integration of **Auth0 Token Vault**.
+Building **LifeOS** for the "Authorized to Act" hackathon meant solving a practical security problem: how can an agent act on Gmail, Calendar, and Drive without you losing control?
 
-Early in development, we faced a significant technical hurdle: how to allow an AI model to act on behalf of a user across multiple Google services while keeping OAuth tokens completely isolated from the application logic. Traditional methods often involve storing tokens in a database where the application (and potentially the AI) can access them directly. This didn't feel right for a truly secure "Life OS."
+The architecture we shipped:
 
-By leveraging **Auth0 Token Vault**, we implemented a credential-free architecture. The Vault handles the exchange and refresh of Google OAuth tokens, and our Convex backend only communicates with the Vault to trigger actions via secure IDs. This means the AI agent can "request" an email be sent or an event be created, but it never actually touches the raw token. This abstraction layer solved our biggest security concern and allowed us to focus on the "intelligence" and user experience of the agent.
+1. **Auth0** for app sign-in
+2. **Direct Google OAuth** per service (Gmail / Calendar / Drive) with explicit scopes
+3. **Private token storage in Convex**, with automatic refresh
+4. **Human-in-the-loop approval** for write actions (and always for sending email when enabled)
 
-One of our proudest achievements was seeing the agent seamlessly transition from summarizing a complex thread of Gmail messages to booking a meeting in Google Calendar, all from a single natural language prompt. It felt like we were finally building the future of personal productivity. This journey taught us that with the right security primitives like Token Vault, we can build powerful AI tools that users can actually trust with their most sensitive data.
+That model is honest and operable for a personal deployment: tokens are not hidden behind marketing claims, scopes are per-service, and sensitive actions can pause for your approval. The product win is the same — one natural-language prompt can summarize mail and book a meeting — while the security story matches the code.

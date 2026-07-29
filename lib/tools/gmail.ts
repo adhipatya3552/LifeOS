@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { z } from "zod";
+import { isLifeOsDemoMode, missingAccessTokenResult } from "@/lib/demo-mode";
 
 export const summarizeInboxInputSchema = z.object({
   maxResults: z
@@ -71,6 +72,9 @@ export async function executeSummarizeInbox(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Gmail");
+    }
     const unread = MOCK_EMAILS.filter((email) => email.unread);
     return {
       success: true,
@@ -131,6 +135,9 @@ export async function executeSearchEmails(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Gmail");
+    }
     const filtered = MOCK_EMAILS.filter(
       (email) =>
         email.subject.toLowerCase().includes(query.toLowerCase()) ||
@@ -172,6 +179,9 @@ export async function executeDraftReply(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Gmail");
+    }
     return {
       success: true,
       mock: true,
@@ -213,6 +223,9 @@ export async function executeSendEmail(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Gmail");
+    }
     return {
       success: true,
       mock: true,

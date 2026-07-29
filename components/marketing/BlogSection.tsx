@@ -5,37 +5,39 @@ import { Brain, Sparkles, BookOpen } from "lucide-react";
 
 export function BlogSection() {
   return (
-    <section id="blog" className="relative px-4 py-20 overflow-hidden sm:px-6 sm:py-32">
+    <section id="blog" className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28">
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="pointer-events-none absolute inset-0"
         style={{
-          background: "radial-gradient(circle at 70% 80%, rgba(6,182,212,0.05) 0%, transparent 60%)",
+          background:
+            "radial-gradient(circle at 70% 80%, rgba(61,255,181,0.05) 0%, transparent 60%)",
         }}
       />
-      
-      <div className="relative z-10 w-full max-w-4xl mx-auto">
+
+      <div className="relative z-10 mx-auto w-full max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-16 text-center"
+          className="mb-12 text-center sm:mb-16"
         >
           <div
-            className="inline-flex items-center gap-2 px-3 py-1 mb-4 text-xs font-semibold uppercase tracking-wider rounded-full"
+            className="mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider"
             style={{
-              background: "rgba(139,92,246,0.1)",
-              border: "1px solid rgba(139,92,246,0.2)",
+              background: "rgba(124,92,255,0.1)",
+              border: "1px solid rgba(124,92,255,0.25)",
               color: "var(--color-primary-light)",
             }}
           >
             <BookOpen className="h-3 w-3" />
-            <span>Bonus Blog Post</span>
+            <span>From the build log</span>
           </div>
-          <h2 className="text-3xl font-bold md:text-5xl mb-6">
-            Building LifeOS: A Journey into <span className="gradient-text">Secure AI Automation</span>
+          <h2 className="font-display mb-6 text-3xl font-bold md:text-5xl">
+            Building LifeOS:{" "}
+            <span className="gradient-text">secure AI automation</span>
           </h2>
-          <div className="w-20 h-1 mx-auto rounded-full gradient-primary" />
+          <div className="mx-auto h-1 w-20 rounded-full gradient-primary" />
         </motion.div>
 
         <motion.div
@@ -43,8 +45,7 @@ export function BlogSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
-          className="p-8 md:p-12 glass rounded-3xl relative"
-          style={{ border: "1px solid var(--color-border-hover)" }}
+          className="glass-depth relative rounded-3xl p-8 md:p-12"
         >
           <div className="absolute top-0 right-0 p-6 opacity-10">
             <Brain className="h-24 w-24 text-white" />
@@ -52,43 +53,42 @@ export function BlogSection() {
 
           <div className="prose prose-invert max-w-none space-y-6">
             <p className="text-lg leading-relaxed md:text-xl" style={{ color: "var(--color-text)" }}>
-              Building <strong>LifeOS</strong> for the &quot;Authorized to Act&quot; hackathon has been an exhilarating yet challenging journey. 
-              Our goal was simple but ambitious: create a personal AI agent that can manage your digital life—emails, calendar, and documents—without compromising security. 
-              The cornerstone of this achievement was the integration of <strong>Auth0 Token Vault</strong>.
+              Building <strong>LifeOS</strong> for the &quot;Authorized to Act&quot; hackathon has been an exhilarating yet challenging journey.
+              Our goal was simple but ambitious: create a personal AI agent that can manage your digital life—emails, calendar, and documents—while
+              keeping you in control of sensitive actions.
             </p>
 
             <p className="text-base leading-relaxed md:text-lg" style={{ color: "var(--color-text-muted)" }}>
-              Early in development, we faced a significant technical hurdle: how to allow an AI model to act on behalf of a user across multiple Google services 
-              while keeping OAuth tokens completely isolated from the application logic. Traditional methods often involve storing tokens in a database where 
-              the application (and potentially the AI) can access them directly. This didn&apos;t feel right for a truly secure &quot;Life OS.&quot;
+              The architecture we shipped uses <strong>Auth0 for sign-in</strong> and <strong>direct Google OAuth</strong> for each service
+              (Gmail, Calendar, Drive). Tokens are stored in your private Convex database, refreshed automatically, and can be revoked at any time.
+              Write actions can require explicit in-app approval before they run.
             </p>
 
-            <div 
+            <div
                 className="my-8 p-6 rounded-2xl bg-opacity-10 border border-opacity-20"
-                style={{ 
+                style={{
                     background: "rgba(6, 182, 212, 0.05)",
                     borderColor: "rgba(6, 182, 212, 0.2)"
                 }}
             >
                 <div className="flex items-center gap-3 mb-3">
                     <Sparkles className="h-5 w-5 text-cyan-400" />
-                    <h4 className="font-bold text-cyan-400">The Breakthrough</h4>
+                    <h4 className="font-bold text-cyan-400">The model we chose</h4>
                 </div>
                 <p className="italic text-lg" style={{ color: "var(--color-text)" }}>
-                    &ldquo;By leveraging <strong>Auth0 Token Vault</strong>, we implemented a credential-free architecture. 
-                    The agent triggers actions via secure IDs, never actually touching raw tokens.&rdquo;
+                    &ldquo;Per-service Google OAuth, private token storage, automatic refresh, and human-in-the-loop
+                    approval for sensitive writes — so the agent can act without taking you out of the loop.&rdquo;
                 </p>
             </div>
 
             <p className="text-base leading-relaxed md:text-lg" style={{ color: "var(--color-text-muted)" }}>
-              This abstraction layer solved our biggest security concern and allowed us to focus on the &quot;intelligence&quot; and user experience of the agent. 
-              One of our proudest achievements was seeing the agent seamlessly transition from summarizing a complex thread of Gmail messages to booking a meeting 
-              in Google Calendar, all from a single natural language prompt.
+              That foundation let us focus on the intelligence and UX of the agent. One of our proudest moments was watching
+              LifeOS move from summarizing a Gmail thread to booking a Calendar meeting from a single natural-language prompt.
             </p>
-            
+
             <p className="text-base leading-relaxed md:text-lg" style={{ color: "var(--color-text-muted)" }}>
-              It felt like we were finally building the future of personal productivity. This journey taught us that with the right security primitives 
-              like Token Vault, we can build powerful AI tools that users can actually trust with their most sensitive data.
+              It felt like a step toward personal productivity tools people can actually trust — not by hiding security behind buzzwords,
+              but by making connections, scopes, and approvals understandable.
             </p>
           </div>
 

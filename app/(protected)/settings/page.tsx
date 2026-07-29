@@ -1,34 +1,95 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { Brain, Shield, Bell, Loader2 } from "lucide-react";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useCurrentUserRecord } from "@/lib/use-current-user";
+
+type SettingKey =
+  | "autoApproveLowRisk"
+  | "requireApprovalAll"
+  | "stepUpAuth"
+  | "auditLog"
+  | "actionNotifications";
+
+type SettingsState = Record<SettingKey, boolean>;
+
+const DEFAULT_SETTINGS: SettingsState = {
+  autoApproveLowRisk: true,
+  requireApprovalAll: false,
+  stepUpAuth: true,
+  auditLog: true,
+  actionNotifications: true,
+};
 
 export default function SettingsPage() {
-  const currentUser = useCurrentUserRecord();
-  const settings = useQuery(
-    api.userSettings.getSettings,
-    currentUser ? { userId: currentUser._id } : "skip"
-  );
-  const upsertSettings = useMutation(api.userSettings.upsertSettings);
+  const [settings, setSettings] = useState<SettingsState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<SettingKey | null>(null);
 
-  const isLoading = currentUser === undefined || settings === undefined;
+  const loadSettings = useCallback(async () => {
+    setError(null);
+    try {
+      const response = await fetch("/api/settings");
+      if (!response.ok) {
+        throw new Error("Could not load settings");
+      }
+      const payload = (await response.json()) as {
+        settings?: Partial<SettingsState> | null;
+      };
+      setSettings({
+        ...DEFAULT_SETTINGS,
+        ...(payload.settings || {}),
+      });
+    } catch (loadError) {
+      console.error(loadError);
+      setError("Failed to load settings. Please refresh and try again.");
+      setSettings(DEFAULT_SETTINGS);
+    }
+  }, []);
 
-  type SettingKey =
-    | "autoApproveLowRisk"
-    | "requireApprovalAll"
-    | "stepUpAuth"
-    | "auditLog"
-    | "actionNotifications";
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
-  function handleToggle(field: SettingKey) {
-    if (!currentUser || !settings) return;
-    upsertSettings({
-      userId: currentUser._id,
-      [field]: !(settings as Record<string, unknown>)[field],
-    }).catch(console.error);
+  async function handleToggle(field: SettingKey) {
+    if (!settings || savingKey) return;
+
+    const nextValue = !settings[field];
+    const previous = settings;
+    setSettings({ ...settings, [field]: nextValue });
+    setSavingKey(field);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: nextValue }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not save setting");
+      }
+
+      const payload = (await response.json()) as {
+        settings?: Partial<SettingsState> | null;
+      };
+
+      if (payload.settings) {
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...payload.settings,
+        });
+      }
+    } catch (saveError) {
+      console.error(saveError);
+      setSettings(previous);
+      setError("Could not save that setting. Your previous value was restored.");
+    } finally {
+      setSavingKey(null);
+    }
   }
+
+  const isLoading = settings === null;
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto overflow-x-clip">
@@ -53,19 +114,34 @@ export default function SettingsPage() {
         </div>
       ) : (
         <div className="w-full max-w-2xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
+          {error ? (
+            <div
+              className="rounded-2xl px-4 py-3 text-sm"
+              style={{
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.24)",
+                color: "var(--color-danger)",
+              }}
+            >
+              {error}
+            </div>
+          ) : null}
+
           <Section icon={Brain} color="#8b5cf6" title="Agent Behavior">
             <ToggleSetting
               id="auto-approve-low-risk"
               label="Auto-approve low-risk actions"
-              description="Allow the agent to execute read-only actions (inbox summary, schedule view) without confirmation."
-              checked={settings?.autoApproveLowRisk ?? true}
+              description="When on, read-only tools (inbox, schedule, free slots, list docs) run without confirmation. When off, every tool pauses for your approval."
+              checked={settings.autoApproveLowRisk}
+              disabled={savingKey === "autoApproveLowRisk"}
               onChange={() => handleToggle("autoApproveLowRisk")}
             />
             <ToggleSetting
               id="require-approval-all"
               label="Require approval for all write actions"
-              description="Pause before creating events, drafting emails, or modifying documents."
-              checked={settings?.requireApprovalAll ?? false}
+              description="Pause before creating events, drafting emails, modifying calendars, or creating documents."
+              checked={settings.requireApprovalAll}
+              disabled={savingKey === "requireApprovalAll"}
               onChange={() => handleToggle("requireApprovalAll")}
             />
           </Section>
@@ -73,16 +149,18 @@ export default function SettingsPage() {
           <Section icon={Shield} color="#4285f4" title="Security">
             <ToggleSetting
               id="step-up-auth"
-              label="Step-up auth for sensitive actions"
-              description="Require re-authentication via Auth0 before sending emails or deleting events."
-              checked={settings?.stepUpAuth ?? true}
+              label="Extra approval for sending email"
+              description="Always require explicit in-app approval before send_email runs, even if other write approvals are off."
+              checked={settings.stepUpAuth}
+              disabled={savingKey === "stepUpAuth"}
               onChange={() => handleToggle("stepUpAuth")}
             />
             <ToggleSetting
               id="audit-log"
               label="Keep action audit log"
-              description="Store a history of all agent actions in Convex for review."
-              checked={settings?.auditLog ?? true}
+              description="Store a history of agent actions in your private Convex database for review on the History page."
+              checked={settings.auditLog}
+              disabled={savingKey === "auditLog"}
               onChange={() => handleToggle("auditLog")}
             />
           </Section>
@@ -92,7 +170,8 @@ export default function SettingsPage() {
               id="action-completed"
               label="Play a sound when tasks complete"
               description="Plays a soft chime when the AI agent finishes responding to your request."
-              checked={settings?.actionNotifications ?? true}
+              checked={settings.actionNotifications}
+              disabled={savingKey === "actionNotifications"}
               onChange={() => handleToggle("actionNotifications")}
             />
           </Section>
@@ -124,15 +203,15 @@ function Section({
       <div className="mb-5 flex items-center gap-3">
         <div
           className="flex h-9 w-9 items-center justify-center rounded-xl"
-          style={{ background: `${color}15`, border: `1px solid ${color}25` }}
+          style={{ background: `${color}18`, border: `1px solid ${color}30` }}
         >
-          <Icon className="w-5 h-5" style={{ color }} />
+          <Icon className="h-4 w-4" style={{ color }} />
         </div>
         <h2 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
           {title}
         </h2>
       </div>
-      <div className="space-y-5">{children}</div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 }
@@ -142,47 +221,49 @@ function ToggleSetting({
   label,
   description,
   checked,
+  disabled,
   onChange,
 }: {
   id: string;
   label: string;
   description: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: () => void;
 }) {
   return (
-    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium"
+          style={{ color: "var(--color-text)" }}
+        >
           {label}
-        </p>
-        <p className="mt-0.5 text-xs" style={{ color: "var(--color-text-muted)" }}>
+        </label>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
           {description}
         </p>
       </div>
       <button
         id={id}
+        type="button"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         onClick={onChange}
-        className="relative flex-shrink-0 cursor-pointer"
-        style={{ WebkitTapHighlightColor: "transparent" }}
+        className="relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50"
+        style={{
+          background: checked ? "var(--color-primary)" : "var(--color-surface-2)",
+          border: "1px solid var(--color-border)",
+        }}
       >
-        <div
-          className="h-6 w-11 rounded-full transition-all duration-300"
+        <span
+          className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
           style={{
-            background: checked ? "var(--color-primary)" : "var(--color-surface-2)",
-            border: `1px solid ${checked ? "var(--color-primary)" : "var(--color-border)"}`,
+            left: checked ? "calc(100% - 1.4rem)" : "0.2rem",
           }}
-        >
-          <div
-            className="absolute h-5 w-5 rounded-full bg-white shadow transition-all duration-300"
-            style={{
-              top: "1px",
-              left: checked ? "22px" : "2px",
-            }}
-          />
-        </div>
+        />
       </button>
     </div>
   );

@@ -103,19 +103,19 @@ export default function ConnectionsPage() {
         <div
           className="flex items-start gap-4 rounded-2xl p-5"
           style={{
-            background: "rgba(139,92,246,0.06)",
-            border: "1px solid rgba(139,92,246,0.2)",
+            background: "rgba(124,92,255,0.06)",
+            border: "1px solid rgba(124,92,255,0.2)",
           }}
         >
           <div
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-            style={{ background: "rgba(139,92,246,0.15)" }}
+            style={{ background: "rgba(124,92,255,0.15)" }}
           >
             <Shield className="h-5 w-5" style={{ color: "var(--color-primary-light)" }} />
           </div>
           <div>
             <p className="mb-1 font-semibold" style={{ color: "var(--color-primary-light)" }}>
-              Powered by Auth0 Token Vault
+              Direct Google OAuth · tokens stored in your private Convex DB
             </p>
             <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
               LifeOS requests tokens for the specific service you connect. Your Gmail,
@@ -123,6 +123,52 @@ export default function ConnectionsPage() {
             </p>
           </div>
         </div>
+
+        <details
+          className="rounded-2xl p-5"
+          style={{
+            background: "rgba(245,158,11,0.06)",
+            border: "1px solid rgba(245,158,11,0.25)",
+          }}
+        >
+          <summary
+            className="cursor-pointer list-none font-semibold"
+            style={{ color: "var(--color-warning)" }}
+          >
+            Seeing “Google hasn&apos;t verified this app”? Click here.
+          </summary>
+          <div
+            className="mt-3 space-y-2 text-sm leading-relaxed"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            <p>
+              That warning is normal for personal projects that have not completed
+              Google&apos;s formal verification. LifeOS never sees your Google password —
+              sign-in and consent go through Google OAuth only.
+            </p>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Click <strong>Advanced</strong> on Google&apos;s screen</li>
+              <li>
+                Click <strong>Go to LifeOS (unsafe)</strong> — Google&apos;s standard label
+                for unverified apps
+              </li>
+              <li>Review scopes and click <strong>Allow</strong></li>
+            </ol>
+            <p>
+              You can revoke access anytime at{" "}
+              <a
+                href="https://myaccount.google.com/permissions"
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+                style={{ color: "var(--color-primary-light)" }}
+              >
+                myaccount.google.com/permissions
+              </a>
+              .
+            </p>
+          </div>
+        </details>
 
         <div className="grid grid-cols-1 gap-5">
           {GOOGLE_SERVICE_LIST.map((service, index) => {

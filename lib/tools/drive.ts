@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { z } from "zod";
+import { isLifeOsDemoMode, missingAccessTokenResult } from "@/lib/demo-mode";
 import type { GoogleToolContext } from "@/lib/tools/gmail";
 
 export const listRecentDocsInputSchema = z.object({
@@ -57,6 +58,9 @@ export async function executeListRecentDocs(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Drive");
+    }
     return {
       success: true,
       mock: true,
@@ -92,6 +96,9 @@ export async function executeSummarizeDoc(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Drive");
+    }
     const mockDoc = MOCK_DOCS.find((doc) => doc.id === docId);
     return {
       success: true,
@@ -134,6 +141,9 @@ export async function executeCreateDoc(
   { accessToken }: GoogleToolContext
 ) {
   if (!accessToken) {
+    if (!isLifeOsDemoMode()) {
+      return missingAccessTokenResult("Google Drive");
+    }
     return {
       success: true,
       mock: true,

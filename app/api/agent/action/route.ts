@@ -26,12 +26,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  const currentUser = await queryConvex(api.users.getUser, {
+    auth0Id: session.user.sub,
+  });
+
+  if (!currentUser) {
+    return NextResponse.json(
+      { error: "User profile not found. Please sign in again." },
+      { status: 403 }
+    );
+  }
+
   const action = await queryConvex(api.agentActions.getAction, {
     actionId: actionId as Id<"agentActions">,
   });
 
   if (!action) {
     return NextResponse.json({ error: "Action not found" }, { status: 404 });
+  }
+
+  // Ownership check: never allow approving/rejecting another user's pending action
+  if (action.userId !== currentUser._id) {
+    return NextResponse.json(
+      { error: "You do not have permission to manage this action." },
+      { status: 403 }
+    );
   }
 
   if (action.status !== "pending_approval") {

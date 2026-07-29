@@ -120,9 +120,10 @@ export async function POST(request: Request) {
 
   const {
     messages,
-    requireApproval,
   }: {
     messages: UIMessage[];
+    // Client may still send requireApproval for backward compatibility;
+    // server settings are authoritative.
     requireApproval?: boolean;
   } = await request.json();
 
@@ -132,6 +133,15 @@ export async function POST(request: Request) {
     name: session.user.name ?? session.user.email ?? "LifeOS User",
     picture: session.user.picture,
   });
+
+  const settings = userId
+    ? await queryConvex(api.userSettings.getSettings, { userId })
+    : null;
+
+  const requireApprovalAll = settings?.requireApprovalAll ?? false;
+  const autoApproveLowRisk = settings?.autoApproveLowRisk ?? true;
+  const stepUpAuth = settings?.stepUpAuth ?? true;
+  const auditLogEnabled = settings?.auditLog ?? true;
 
   const serviceConnections = normalizeServiceConnections(
     userId
@@ -190,6 +200,17 @@ export async function POST(request: Request) {
     const description = summarizeToolAction(toolName, input);
     const serviceConfig = getGoogleServiceConfig(service);
     const connection = serviceConnectionMap[service];
+    const writeTool = isWriteTool(toolName);
+    const sensitiveTool = toolName === "send_email";
+
+    // Approval rules (server-side settings are source of truth):
+    // - requireApprovalAll → all write tools
+    // - !autoApproveLowRisk → all tools (including reads)
+    // - stepUpAuth → send_email always needs explicit approval
+    const needsApproval =
+      (!autoApproveLowRisk) ||
+      (writeTool && requireApprovalAll) ||
+      (sensitiveTool && stepUpAuth);
 
     if (connection?.status !== "connected") {
       return {
@@ -200,7 +221,7 @@ export async function POST(request: Request) {
       };
     }
 
-    if (isWriteTool(toolName) && requireApproval) {
+    if (needsApproval) {
       if (!userId) {
         return {
           success: false,
@@ -221,14 +242,30 @@ export async function POST(request: Request) {
         metadata: {
           connectedServices,
           accountEmail: connection.accountEmail,
+          reason: sensitiveTool && stepUpAuth
+            ? "step_up_sensitive"
+            : writeTool
+              ? "require_approval_write"
+              : "require_approval_all_tools",
         },
       });
+
+      if (!actionId) {
+        return {
+          success: false,
+          error:
+            "Could not store a pending approval action. Check that Convex is configured, then try again.",
+        };
+      }
 
       return {
         success: true,
         status: "pending_approval",
         actionId,
-        message: `${description} is awaiting approval.`,
+        message:
+          sensitiveTool && stepUpAuth
+            ? `${description} needs your explicit approval before sending.`
+            : `${description} is awaiting approval.`,
       };
     }
 
@@ -261,7 +298,7 @@ export async function POST(request: Request) {
       accessToken,
     });
 
-    if (userId) {
+    if (userId && auditLogEnabled) {
       await mutateConvex(api.agentActions.logAction, {
         userId,
         conversationId,
@@ -297,9 +334,17 @@ export async function POST(request: Request) {
         return;
       }
 
+      const responseId =
+        typeof event.response === "object" &&
+        event.response &&
+        "id" in event.response &&
+        typeof (event.response as { id?: unknown }).id === "string"
+          ? (event.response as { id: string }).id
+          : null;
+
       await mutateConvex(api.messages.addMessage, {
         conversationId,
-        messageKey: `assistant-${Date.now()}`,
+        messageKey: responseId || `assistant-${crypto.randomUUID()}`,
         role: "assistant",
         content: event.text.trim(),
       });

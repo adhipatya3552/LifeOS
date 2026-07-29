@@ -154,7 +154,7 @@ export function getConnectAccountFailureMessage(
     haystack.includes("connected accounts") ||
     haystack.includes("token vault")
   ) {
-    return `Connected Accounts and Token Vault must be enabled on the "${connectionName}" Auth0 connection before ${config?.shortName || service} can be linked.`;
+    return `LifeOS uses direct Google OAuth (not Auth0 Token Vault). Confirm GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set and the redirect URI matches APP_BASE_URL/api/auth/google/callback before linking ${config?.shortName || service}.`;
   }
 
   if (
@@ -162,8 +162,8 @@ export function getConnectAccountFailureMessage(
     haystack.includes("google") ||
     haystack.includes("scope")
   ) {
-    return `Auth0 reached the provider setup for ${config?.name || service}, but the Google provider configuration or requested scopes are not accepted yet. Confirm the Google APIs are enabled and the OAuth consent screen includes the required scopes.`;
+    return `Google rejected the OAuth setup for ${config?.name || service}. Confirm the Gmail, Calendar, Drive, and Docs APIs are enabled and the OAuth consent screen includes the required scopes.`;
   }
 
-  return `Unable to start ${config?.shortName || service} authorization because the Auth0 Connected Accounts setup is incomplete. Check that "${connectionName}" exists, is enabled for this app, and has Connected Accounts, Token Vault, and Offline Access enabled.`;
+  return `Unable to start ${config?.shortName || service} authorization. Check Google OAuth credentials, authorized redirect URIs, enabled APIs, and that you are signed in to LifeOS.`;
 }

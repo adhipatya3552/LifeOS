@@ -3,33 +3,74 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Brain } from "lucide-react";
+import {
+  Brain,
+  CalendarDays,
+  FolderOpen,
+  Loader2,
+  Mail,
+} from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ActionCard } from "@/components/chat/ActionCard";
 import { ChatInput } from "@/components/chat/ChatInput";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { useAppSession } from "@/components/providers/AppSessionProvider";
 import { useCurrentUserRecord } from "@/lib/use-current-user";
 import { playCompletionChime } from "@/lib/notification-sound";
+import {
+  getConnectedServiceIds,
+} from "@/lib/google-service-registry";
+import { normalizeServiceConnections } from "@/lib/google-service-flow";
+import { useConvexEnabled } from "@/app/ConvexClientProvider";
+
+const STARTER_PROMPTS = [
+  "Summarize my inbox",
+  "What's on my calendar today?",
+  "List my recent Drive docs",
+  "Find a free slot tomorrow afternoon",
+];
 
 export default function DashboardPage() {
   const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevStatusRef = useRef<string>("ready");
+  const promptPrefillDone = useRef(false);
+  const searchParams = useSearchParams();
 
-  // Read agent behavior settings from Convex
+  const convexEnabled = useConvexEnabled();
+  const {
+    auth0Id,
+    connectedServices: bootstrappedServices,
+    serviceConnections: bootstrappedConnections,
+  } = useAppSession();
+
+  const liveConnections = useQuery(
+    api.serviceConnections.listByAuth0Id,
+    convexEnabled ? { auth0Id } : "skip"
+  );
+
+  const serviceConnections = normalizeServiceConnections(
+    liveConnections || bootstrappedConnections || []
+  );
+  const connectedServices =
+    getConnectedServiceIds(serviceConnections).length > 0
+      ? getConnectedServiceIds(serviceConnections)
+      : bootstrappedServices;
+
   const currentUser = useCurrentUserRecord();
   const settings = useQuery(
     api.userSettings.getSettings,
     currentUser ? { userId: currentUser._id } : "skip"
   );
   const notificationsEnabled = settings?.actionNotifications ?? true;
-  // requireApproval is driven by the Settings page "Require approval for all write actions" toggle
-  const requireApproval = settings?.requireApprovalAll ?? false;
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, setMessages, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
     }),
@@ -38,11 +79,61 @@ export default function DashboardPage() {
     },
   });
 
-  // Play the completion chime when streaming finishes
+  const setMessagesRef = useRef(setMessages);
   useEffect(() => {
-    const wasStreaming = prevStatusRef.current === "streaming" || prevStatusRef.current === "submitted";
+    setMessagesRef.current = setMessages;
+  }, [setMessages]);
+
+  // Prefill from /dashboard?prompt=... or /prompts deep links
+  useEffect(() => {
+    if (promptPrefillDone.current) return;
+    const prompt = searchParams.get("prompt");
+    if (prompt) {
+      setInput(prompt);
+      promptPrefillDone.current = true;
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch("/api/chat/history");
+        if (!response.ok) {
+          return;
+        }
+        const payload = (await response.json()) as {
+          messages?: UIMessage[];
+        };
+        if (!cancelled && payload.messages && payload.messages.length > 0) {
+          setMessagesRef.current(payload.messages);
+        }
+      } catch (error) {
+        console.error("Failed to load chat history", error);
+      } finally {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const wasStreaming =
+      prevStatusRef.current === "streaming" ||
+      prevStatusRef.current === "submitted";
     const isNowReady = status === "ready";
-    if (wasStreaming && isNowReady && notificationsEnabled && messages.length > 0) {
+    if (
+      wasStreaming &&
+      isNowReady &&
+      notificationsEnabled &&
+      messages.length > 0
+    ) {
       playCompletionChime();
     }
     prevStatusRef.current = status;
@@ -53,7 +144,7 @@ export default function DashboardPage() {
   }, [messages]);
 
   const isLoading = status === "submitted" || status === "streaming";
-  const isEmpty = messages.length === 0;
+  const isEmpty = !historyLoading && messages.length === 0;
 
   const handleSubmit = async () => {
     const text = input.trim();
@@ -63,20 +154,37 @@ export default function DashboardPage() {
     }
 
     setChatError(null);
-    await sendMessage(
-      { text },
-      {
-        body: { requireApproval },
-      }
-    );
+    await sendMessage({ text });
     setInput("");
   };
 
+  const systems = [
+    {
+      id: "gmail" as const,
+      label: "Gmail",
+      icon: Mail,
+      color: "#ea4335",
+      online: connectedServices.includes("gmail"),
+    },
+    {
+      id: "calendar" as const,
+      label: "Calendar",
+      icon: CalendarDays,
+      color: "#4285f4",
+      online: connectedServices.includes("calendar"),
+    },
+    {
+      id: "drive" as const,
+      label: "Drive",
+      icon: FolderOpen,
+      color: "#34a853",
+      online: connectedServices.includes("drive"),
+    },
+  ];
+
   return (
     <div className="flex flex-col h-full">
-      <div
-        className="page-header flex items-center px-6 py-4"
-      >
+      <div className="page-header flex items-center px-6 py-4">
         <div>
           <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
             AI Dashboard
@@ -88,6 +196,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+        <OnboardingChecklist
+          connectedServices={connectedServices}
+          hasMessages={messages.length > 0}
+          onPickPrompt={setInput}
+        />
+
         {chatError ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -103,81 +217,116 @@ export default function DashboardPage() {
           </motion.div>
         ) : null}
 
-        <AnimatePresence>
-          {isEmpty ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center h-full text-center py-24"
-            >
-              <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mb-6 glow-primary animate-float">
-                <Brain className="w-10 h-10 text-white" />
-              </div>
-              <h2
-                className="text-2xl font-bold mb-3"
-                style={{ color: "var(--color-text)" }}
-              >
-                Hello! I&apos;m your LifeOS agent.
-              </h2>
-              <p
-                className="text-base max-w-md"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Ask me to check your emails, manage your calendar, or work with
-                your Drive documents. I&apos;ll handle it autonomously and
-                securely.
-              </p>
-
-              <div className="flex flex-wrap gap-2 mt-8 justify-center">
-                {[
-                  "Summarize my inbox",
-                  "What's on my calendar today?",
-                  "List my recent Drive docs",
-                  "Find a free slot tomorrow afternoon",
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setInput(suggestion)}
-                    className="px-4 py-2 rounded-full text-sm transition-all duration-200 hover:scale-105"
-                    style={{
-                      background: "var(--color-surface-2)",
-                      border: "1px solid var(--color-border-hover)",
-                      color: "var(--color-text-muted)",
-                    }}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          ) : (
-            messages.map((message) => (
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2
+              className="h-8 w-8 animate-spin"
+              style={{ color: "var(--color-primary)" }}
+            />
+          </div>
+        ) : (
+          <AnimatePresence>
+            {isEmpty ? (
               <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 12 }}
+                key="empty"
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+                className="flex flex-col items-center justify-center h-full text-center py-16"
               >
-                <MessageBubble message={message} />
-                {message.parts
-                  .filter((part) => part.type.startsWith("tool-"))
-                  .map((part, index) => (
-                    <ActionCard
-                      key={`${message.id}-tool-${index}`}
-                      toolPart={part as {
-                        type: `tool-${string}`;
-                        state?: string;
-                        output?: unknown;
-                        input?: unknown;
-                        errorText?: string;
+                <div className="w-20 h-20 rounded-2xl gradient-primary flex items-center justify-center mb-6 glow-primary animate-float">
+                  <Brain className="w-10 h-10 text-white" />
+                </div>
+                <h2
+                  className="font-display text-2xl font-bold mb-2"
+                  style={{ color: "var(--color-text)" }}
+                >
+                  Systems status
+                </h2>
+                <p
+                  className="text-base max-w-md mb-6"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Hello! I&apos;m your LifeOS agent. Connect services, then ask me
+                  to manage mail, calendar, or docs.
+                </p>
+
+                <div className="mb-8 flex flex-wrap justify-center gap-2">
+                  {systems.map((system) => (
+                    <div
+                      key={system.id}
+                      className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold"
+                      style={{
+                        background: system.online
+                          ? `${system.color}18`
+                          : "var(--color-surface-2)",
+                        border: system.online
+                          ? `1px solid ${system.color}40`
+                          : "1px solid var(--color-border)",
+                        color: system.online
+                          ? system.color
+                          : "var(--color-text-subtle)",
                       }}
-                    />
+                    >
+                      <system.icon className="h-3.5 w-3.5" />
+                      {system.label}
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{
+                          background: system.online
+                            ? "var(--color-accent)"
+                            : "var(--color-text-subtle)",
+                        }}
+                      />
+                      {system.online ? "Online" : "Offline"}
+                    </div>
                   ))}
+                </div>
+
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {STARTER_PROMPTS.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setInput(suggestion)}
+                      className="px-4 py-2 rounded-full text-sm transition-all duration-200 hover:scale-105"
+                      style={{
+                        background: "var(--color-surface-2)",
+                        border: "1px solid var(--color-border-hover)",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
               </motion.div>
-            ))
-          )}
-        </AnimatePresence>
+            ) : (
+              messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <MessageBubble message={message} />
+                  {message.parts
+                    .filter((part) => part.type.startsWith("tool-"))
+                    .map((part, index) => (
+                      <ActionCard
+                        key={`${message.id}-tool-${index}`}
+                        toolPart={part as {
+                          type: `tool-${string}`;
+                          state?: string;
+                          output?: unknown;
+                          input?: unknown;
+                          errorText?: string;
+                        }}
+                      />
+                    ))}
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
+        )}
 
         {isLoading ? (
           <motion.div
