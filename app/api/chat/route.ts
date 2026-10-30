@@ -2,6 +2,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import {
   APICallError,
   convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   stepCountIs,
   streamText,
   type UIMessage,
@@ -36,8 +38,27 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 const MAX_OUTPUT_TOKEN_CAP = 8192;
 
 function getAIModel() {
+  // LOCAL MOCK MODE: clearly labelled, dev-only, never a real model call.
+  if (process.env.LIFEOS_MOCK_AI === "1") {
+    return null as unknown as ReturnType<ReturnType<typeof createOpenAI>["chat"]>;
+  }
+
+  // Prefer Nebius Token Factory (NVIDIA Nemotron) when configured.
+  if (process.env.NEBIUS_API_KEY) {
+    const nebius = createOpenAI({
+      apiKey: process.env.NEBIUS_API_KEY,
+      baseURL: "https://api.tokenfactory.nebius.com/v1/",
+    });
+    // Exact model ID from Nebius Token Factory catalogue.
+    return nebius.chat(
+      process.env.NEBIUS_MODEL || "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
+    );
+  }
+
   if (!process.env.OPENROUTER_API_KEY) {
-    throw new Error("OPENROUTER_API_KEY is not configured.");
+    throw new Error(
+      "No AI provider configured. Set NEBIUS_API_KEY (preferred) or OPENROUTER_API_KEY, or LIFEOS_MOCK_AI=1 for local mock mode."
+    );
   }
 
   const openrouter = createOpenAI({
@@ -126,6 +147,27 @@ export async function POST(request: Request) {
     // server settings are authoritative.
     requireApproval?: boolean;
   } = await request.json();
+
+  // LOCAL MOCK MODE (dev only): clearly labelled, never a real model call.
+  if (process.env.LIFEOS_MOCK_AI === "1") {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const text = lastUser ? getMessageText(lastUser) : "";
+    const stream = createUIMessageStream({
+      execute: async ({ writer }) => {
+        const id = crypto.randomUUID();
+        writer.write({ type: "text-start", id });
+        const reply =
+          "[MOCK MODE — not a real Nebius/NVIDIA call] LifeOS mock reply to: " +
+          (text || "(empty)") +
+          ". Configure NEBIUS_API_KEY to enable real Nebius Token Factory inference.";
+        for (const chunk of reply.match(/.{1,40}/g) || [reply]) {
+          writer.write({ type: "text-delta", id, delta: chunk });
+        }
+        writer.write({ type: "text-end", id });
+      },
+    });
+    return createUIMessageStreamResponse({ stream });
+  }
 
   const userId = await mutateConvex(api.users.upsertUser, {
     auth0Id: session.user.sub,
