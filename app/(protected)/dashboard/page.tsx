@@ -11,6 +11,7 @@ import {
   FolderOpen,
   Loader2,
   Mail,
+  Plus,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -38,9 +39,11 @@ export default function DashboardPage() {
   const [input, setInput] = useState("");
   const [chatError, setChatError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [isStartingNew, setIsStartingNew] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const prevStatusRef = useRef<string>("ready");
   const promptPrefillDone = useRef(false);
+  const historyRequestId = useRef(0);
   const searchParams = useSearchParams();
 
   const convexEnabled = useConvexEnabled();
@@ -70,7 +73,7 @@ export default function DashboardPage() {
   );
   const notificationsEnabled = settings?.actionNotifications ?? true;
 
-  const { messages, sendMessage, setMessages, status } = useChat({
+  const { messages, sendMessage, setMessages, status, stop } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
     }),
@@ -96,6 +99,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const requestId = historyRequestId.current;
 
     (async () => {
       try {
@@ -106,13 +110,18 @@ export default function DashboardPage() {
         const payload = (await response.json()) as {
           messages?: UIMessage[];
         };
-        if (!cancelled && payload.messages && payload.messages.length > 0) {
+        if (
+          !cancelled &&
+          requestId === historyRequestId.current &&
+          payload.messages &&
+          payload.messages.length > 0
+        ) {
           setMessagesRef.current(payload.messages);
         }
       } catch (error) {
         console.error("Failed to load chat history", error);
       } finally {
-        if (!cancelled) {
+        if (!cancelled && requestId === historyRequestId.current) {
           setHistoryLoading(false);
         }
       }
@@ -158,6 +167,47 @@ export default function DashboardPage() {
     setInput("");
   };
 
+  const handleNewConversation = async () => {
+    if (isStartingNew) {
+      return;
+    }
+
+    setChatError(null);
+    setIsStartingNew(true);
+
+    try {
+      const response = await fetch("/api/chat/conversation", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(
+          payload?.error || "Could not start a new conversation."
+        );
+      }
+
+      if (isLoading) {
+        stop();
+      }
+
+      historyRequestId.current += 1;
+      setMessages([]);
+      setInput("");
+      setHistoryLoading(false);
+    } catch (error) {
+      setChatError(
+        error instanceof Error
+          ? error.message
+          : "Could not start a new conversation."
+      );
+    } finally {
+      setIsStartingNew(false);
+    }
+  };
+
   const systems = [
     {
       id: "gmail" as const,
@@ -184,8 +234,8 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="page-header flex items-center px-6 py-4">
-        <div>
+      <div className="page-header flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold" style={{ color: "var(--color-text)" }}>
             AI Dashboard
           </h1>
@@ -193,6 +243,26 @@ export default function DashboardPage() {
             Chat with your personal life agent
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => void handleNewConversation()}
+          disabled={isStartingNew || historyLoading}
+          aria-label="Start a new conversation"
+          className="inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
+          style={{
+            background: "rgba(124,92,255,0.12)",
+            border: "1px solid var(--color-border-hover)",
+            color: "var(--color-primary-light)",
+          }}
+        >
+          {isStartingNew ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          New Conversation
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">

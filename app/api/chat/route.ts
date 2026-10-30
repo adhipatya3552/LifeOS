@@ -206,6 +206,17 @@ export async function POST(request: Request) {
   let conversationId =
     cookieStore.get(CONVERSATION_COOKIE)?.value as Id<"conversations"> | undefined;
 
+  if (conversationId && userId) {
+    const existingConversation = await queryConvex(
+      api.conversations.getConversation,
+      { conversationId }
+    );
+
+    if (!existingConversation || existingConversation.userId !== userId) {
+      conversationId = undefined;
+    }
+  }
+
   if (!conversationId && userId) {
     const createdConversationId = await mutateConvex(
       api.conversations.createConversation,
