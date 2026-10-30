@@ -282,6 +282,25 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
+                <div className="flex flex-wrap gap-2 justify-center mb-2">
+                  <button
+                    onClick={() =>
+                      sendMessage({
+                        text: "Give me my daily briefing: summarize my important unread Gmail messages, list today's Google Calendar commitments, identify conflicts and priorities, and propose a prioritised plan. If a calendar action is needed, propose it for my approval before executing.",
+                      })
+                    }
+                    disabled={isLoading}
+                    className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                    style={{
+                      background: "var(--color-accent)",
+                      color: "#fff",
+                      border: "1px solid var(--color-accent)",
+                    }}
+                  >
+                    Daily Personal Briefing
+                  </button>
+                </div>
+
                 <div className="flex flex-wrap gap-2 justify-center">
                   {STARTER_PROMPTS.map((suggestion) => (
                     <button

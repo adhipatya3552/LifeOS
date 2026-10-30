@@ -190,6 +190,25 @@ npx convex codegen   # Regenerate Convex TypeScript types
 
 ---
 
+## Hackathon Period Update (Nebius x NVIDIA Global AI Hackathon, Oct 2026)
+
+During the submission period, LifeOS was updated to run on **Nebius Token Factory** using the NVIDIA open model **Nemotron-3-Nano-30B-A3B** (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`), replacing the previous OpenRouter default. Changes:
+
+- Inference provider switched to Nebius Token Factory (`https://api.tokenfactory.nebius.com/v1/`) via the OpenAI-compatible SDK, using an exact model ID from the Nebius catalogue: `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`.
+- Strict provider mode: hackathon/demo path uses Nebius only. No silent fallback to OpenRouter/Groq/Hugging Face. If `NEBIUS_API_KEY` is missing, the API returns a clear configuration error. OpenRouter remains available only via explicit `LIFEOS_ALLOW_OPENROUTER=1`.
+- Added `NEBIUS_API_KEY`, `NEBIUS_MODEL`, `LIFEOS_MOCK_AI`, and `LIFEOS_ALLOW_OPENROUTER` environment variables.
+- Added a clearly labelled **LOCAL MOCK MODE** (`LIFEOS_MOCK_AI=1`) for local UI/workflow development only. Mock responses are never real Nebius/NVIDIA calls and are labelled as such in the reply.
+- Added a **Daily Personal Briefing** workflow (Gmail + Calendar + approval-gated actions + audit log).
+- Documented Nebius/NVIDIA tool feedback (see below).
+
+### Integration status
+As of this submission, the Nebius Token Factory integration is **implemented but not yet live-verified** (no authorised API key was available in this environment). Status will be updated to "successfully integrated" only after a genuine runtime request to `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` succeeds.
+
+### Nebius / NVIDIA feedback
+- Nebius Token Factory billing requires a bank card and onboarding is blocked without it; RuPay cards may be declined by Stripe. A Visa/Mastercard card or contacting Nebius support via Discord is the legitimate path. Promo code `NEBIUS-DEVPOST-GLOBAL26` and the Nebius Builders Program provide Token Factory credits.
+- The OpenAI-compatible API and exact model IDs make integration straightforward; the model catalogue and pricing page are clear.
+- Suggestion: a card-free trial or country-aware onboarding would help developers in regions where RuPay/local cards are declined.
+
 ## Bonus Blog Post
 
 ### Building LifeOS: Secure AI Automation with Clear Control

@@ -2,6 +2,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 import {
   APICallError,
   convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   stepCountIs,
   streamText,
   type UIMessage,
@@ -36,21 +38,40 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 const MAX_OUTPUT_TOKEN_CAP = 8192;
 
 function getAIModel() {
-  if (!process.env.OPENROUTER_API_KEY) {
-    throw new Error("OPENROUTER_API_KEY is not configured.");
+  // LOCAL MOCK MODE: clearly labelled, dev-only, never a real model call.
+  if (process.env.LIFEOS_MOCK_AI === "1") {
+    return null as unknown as ReturnType<ReturnType<typeof createOpenAI>["chat"]>;
   }
 
-  const openrouter = createOpenAI({
-    apiKey: process.env.OPENROUTER_API_KEY,
-    baseURL: "https://openrouter.ai/api/v1",
-  });
+  // Hackathon/demo path: Nebius Token Factory (NVIDIA Nemotron) ONLY.
+  if (process.env.NEBIUS_API_KEY) {
+    const nebius = createOpenAI({
+      apiKey: process.env.NEBIUS_API_KEY,
+      baseURL: "https://api.tokenfactory.nebius.com/v1/",
+    });
+    // Exact model ID from Nebius Token Factory catalogue.
+    return nebius.chat(
+      process.env.NEBIUS_MODEL || "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
+    );
+  }
 
-  // Use .chat() to force the Chat Completions API (/v1/chat/completions).
-  // The default openrouter(model) uses the Responses API (/v1/responses) which
-  // silently drops maxOutputTokens (shows as `undefined` in the request body),
-  // causing the server to request the model's full 65 K context window and
-  // exceed OpenRouter free-tier credit limits with a 402 error.
-  return openrouter.chat(process.env.AI_MODEL || "openai/gpt-4.1-mini");
+  // Isolated, opt-in OpenRouter path (NOT the hackathon/demo path). Never a silent fallback.
+  if (
+    process.env.LIFEOS_ALLOW_OPENROUTER === "1" &&
+    process.env.OPENROUTER_API_KEY
+  ) {
+    const openrouter = createOpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+    });
+    return openrouter.chat(process.env.AI_MODEL || "openai/gpt-4.1-mini");
+  }
+
+  throw new Error(
+    "NEBIUS_API_KEY is not configured. Hackathon/demo mode requires Nebius Token Factory (NVIDIA Nemotron). " +
+      "Set NEBIUS_API_KEY, or LIFEOS_MOCK_AI=1 for clearly labelled local mock mode. " +
+      "OpenRouter is available only when LIFEOS_ALLOW_OPENROUTER=1 is explicitly set."
+  );
 }
 
 function getMaxOutputTokens() {
@@ -102,6 +123,13 @@ You have access to these tools:
 - Calendar: get_schedule, create_event, reschedule_event, find_free_slot
 - Drive: list_recent_docs, summarize_doc, create_doc
 
+When the user asks for a "daily briefing" or "daily plan":
+1. Call summarize_inbox and get_schedule for today.
+2. Identify important messages, upcoming commitments, and conflicts.
+3. Produce a prioritised, concise briefing with suggested actions.
+4. For any proposed calendar write action, explain it and wait for explicit user approval before calling the tool.
+5. After execution, confirm the result.
+
 Guidelines:
 1. Be proactive and suggest a sensible next step after each answer.
 2. For sensitive write actions, explain what will happen before you ask the tool to act.
@@ -126,6 +154,27 @@ export async function POST(request: Request) {
     // server settings are authoritative.
     requireApproval?: boolean;
   } = await request.json();
+
+  // LOCAL MOCK MODE (dev only): clearly labelled, never a real model call.
+  if (process.env.LIFEOS_MOCK_AI === "1") {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const text = lastUser ? getMessageText(lastUser) : "";
+    const stream = createUIMessageStream({
+      execute: async ({ writer }) => {
+        const id = crypto.randomUUID();
+        writer.write({ type: "text-start", id });
+        const reply =
+          "[MOCK MODE — not a real Nebius/NVIDIA call] LifeOS mock reply to: " +
+          (text || "(empty)") +
+          ". Configure NEBIUS_API_KEY to enable real Nebius Token Factory inference.";
+        for (const chunk of reply.match(/.{1,40}/g) || [reply]) {
+          writer.write({ type: "text-delta", id, delta: chunk });
+        }
+        writer.write({ type: "text-end", id });
+      },
+    });
+    return createUIMessageStreamResponse({ stream });
+  }
 
   const userId = await mutateConvex(api.users.upsertUser, {
     auth0Id: session.user.sub,
