@@ -43,7 +43,7 @@ function getAIModel() {
     return null as unknown as ReturnType<ReturnType<typeof createOpenAI>["chat"]>;
   }
 
-  // Prefer Nebius Token Factory (NVIDIA Nemotron) when configured.
+  // Hackathon/demo path: Nebius Token Factory (NVIDIA Nemotron) ONLY.
   if (process.env.NEBIUS_API_KEY) {
     const nebius = createOpenAI({
       apiKey: process.env.NEBIUS_API_KEY,
@@ -55,23 +55,23 @@ function getAIModel() {
     );
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    throw new Error(
-      "No AI provider configured. Set NEBIUS_API_KEY (preferred) or OPENROUTER_API_KEY, or LIFEOS_MOCK_AI=1 for local mock mode."
-    );
+  // Isolated, opt-in OpenRouter path (NOT the hackathon/demo path). Never a silent fallback.
+  if (
+    process.env.LIFEOS_ALLOW_OPENROUTER === "1" &&
+    process.env.OPENROUTER_API_KEY
+  ) {
+    const openrouter = createOpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+    });
+    return openrouter.chat(process.env.AI_MODEL || "openai/gpt-4.1-mini");
   }
 
-  const openrouter = createOpenAI({
-    apiKey: process.env.OPENROUTER_API_KEY,
-    baseURL: "https://openrouter.ai/api/v1",
-  });
-
-  // Use .chat() to force the Chat Completions API (/v1/chat/completions).
-  // The default openrouter(model) uses the Responses API (/v1/responses) which
-  // silently drops maxOutputTokens (shows as `undefined` in the request body),
-  // causing the server to request the model's full 65 K context window and
-  // exceed OpenRouter free-tier credit limits with a 402 error.
-  return openrouter.chat(process.env.AI_MODEL || "openai/gpt-4.1-mini");
+  throw new Error(
+    "NEBIUS_API_KEY is not configured. Hackathon/demo mode requires Nebius Token Factory (NVIDIA Nemotron). " +
+      "Set NEBIUS_API_KEY, or LIFEOS_MOCK_AI=1 for clearly labelled local mock mode. " +
+      "OpenRouter is available only when LIFEOS_ALLOW_OPENROUTER=1 is explicitly set."
+  );
 }
 
 function getMaxOutputTokens() {
